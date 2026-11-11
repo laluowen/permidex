@@ -302,12 +302,14 @@ func (m *Model) View() tea.View {
 
 // Colours are ANSI palette indices, so they follow the terminal's theme.
 var (
-	bold       = lipgloss.NewStyle().Bold(true)
-	reverse    = lipgloss.NewStyle().Reverse(true)
-	dim        = lipgloss.NewStyle().Faint(true)
-	titleStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6"))
-	sectionSty = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("5"))
-	keyStyle   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("3"))
+	bold        = lipgloss.NewStyle().Bold(true)
+	reverse     = lipgloss.NewStyle().Reverse(true)
+	dim         = lipgloss.NewStyle().Faint(true)
+	titleStyle  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6"))
+	sectionSty  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("5"))
+	keyStyle    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("3"))
+	pickedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
+	plain       = lipgloss.NewStyle()
 )
 
 // keyHint is one key and what it does, for the hint bar and the help screen.
@@ -361,13 +363,13 @@ func (m *Model) rows() []row {
 		if i == 0 || it.Kind != m.shown[i-1].Kind {
 			out = append(out, row{text: sectionSty.Render(fmt.Sprintf("%s (%d)", kindTitle(it.Kind), m.counts[it.Kind])), idx: -1})
 		}
-		mark := "[ ] "
+		mark, rowStyle := "[ ] ", plain
 		if m.picked[it] {
-			mark = "[x] "
+			mark, rowStyle = "[x] ", pickedStyle
 		}
-		text := "  " + mark + m.label(it)
+		text := rowStyle.Render("  " + mark + m.label(it))
 		if i == m.cur.cursor {
-			text = reverse.Render("> " + mark + m.label(it))
+			text = rowStyle.Reverse(true).Render("> " + mark + m.label(it))
 		}
 		out = append(out, row{text: text, idx: i})
 	}
