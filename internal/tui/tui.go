@@ -18,7 +18,7 @@ const (
 	homeCrumb       = "search"
 	homePlaceholder = "search roles, permissions and services"
 	keyEsc          = "esc"
-	hint            = "↑↓ move  → enter open  ← esc back  ? help  q quit"
+	hint            = "↑↓ move  enter open  esc back  ? help  ctrl+c quit"
 )
 
 // view is one screen: details about what it was opened from, a selectable list, and its own search.
@@ -43,6 +43,7 @@ type Model struct {
 	shown   []index.Item
 	counts  [3]int
 	height  int
+	width   int
 	help    bool
 }
 
@@ -75,6 +76,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.height = msg.Height
+		m.width = msg.Width
 		return m, nil
 	case tea.KeyPressMsg:
 		return m.key(msg)
@@ -97,26 +99,19 @@ func (m *Model) key(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch s {
 	case "?":
 		m.help = true
-	case "q":
-		if m.input.Value() == "" {
-			return m, tea.Quit
-		}
-		m.typeKey(k)
 	case keyEsc:
 		if m.input.Value() != "" {
 			m.setFilter("")
 		} else {
 			m.pop()
 		}
-	case "left":
-		m.pop()
 	case "backspace":
 		if m.input.Value() == "" {
 			m.pop()
 		} else {
 			m.typeKey(k)
 		}
-	case "right", "enter":
+	case "enter":
 		m.open()
 	case "ctrl+o", "home":
 		m.stack = nil
@@ -304,19 +299,30 @@ func (m *Model) rows() []row {
 	return out
 }
 
-// crumbs is the path from the start screen to the current view.
-func (m *Model) crumbs() string {
+// breadcrumb is the path from the start screen to the current view. When it is wider than the
+// terminal it drops the oldest crumbs, so the current view always shows.
+func (m *Model) breadcrumb() string {
 	parts := make([]string, 0, len(m.stack)+1)
 	for _, v := range m.stack {
 		parts = append(parts, v.crumb)
 	}
 	parts = append(parts, m.cur.crumb)
-	return strings.Join(parts, " › ")
+	width := m.width
+	if width <= 0 {
+		width = 80
+	}
+	prefix := ""
+	for len(parts) > 1 && lipgloss.Width(prefix+strings.Join(parts, " › ")) > width {
+		parts = parts[1:]
+		prefix = "… › "
+	}
+	return prefix + strings.Join(parts, " › ")
 }
 
 func (m *Model) listView() string {
 	var top []string
-	top = append(top, bold.Render("permidex  "+m.crumbs()+"  data from "+m.fetched.Format("2006-01-02")))
+	top = append(top, dim.Render("permidex  data from "+m.fetched.Format("2006-01-02")))
+	top = append(top, bold.Render(m.breadcrumb()))
 	top = append(top, m.cur.info...)
 	top = append(top, m.input.View(), "")
 
@@ -352,12 +358,12 @@ func (m *Model) helpView() string {
 	for _, l := range []string{
 		"type                 search (roles match name or title)",
 		"up down pgup pgdn    move",
-		"enter, right         open the selected item",
-		"left, esc            back (esc clears the search first)",
+		"enter                open the selected item",
+		"esc                  back (esc clears the search first)",
 		"backspace            delete, or back when the search is empty",
 		"ctrl+o, home         reset to the start screen",
 		"?                    this help",
-		"q, ctrl+c            quit (q only when the search is empty)",
+		"ctrl+c               quit",
 	} {
 		b.WriteString("  " + l + "\n")
 	}

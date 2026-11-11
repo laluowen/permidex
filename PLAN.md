@@ -77,12 +77,12 @@ Built with Bubble Tea, `bubbles/list` or `bubbles/textinput` for search, lipglos
 |---|---|
 | type | fuzzy filter over the current list |
 | `enter` | detail for the selected item |
-| `enter`, `→` | open the selected item (drill-down view) |
-| `←`, `esc` | back (`esc` clears the search first) |
+| `enter` | open the selected item (drill-down view) |
+| `esc` | back (clears the search first) |
 | `backspace` | delete, or back when the search is empty |
 | `ctrl+o` or `home` | reset to the start screen |
 | `?` | key help |
-| `q` (empty search only) / `ctrl+c` | quit |
+| `ctrl+c` | quit |
 
 Pivot keys (`ctrl+r`, `ctrl+p`, `ctrl+s`) were replaced by drill-down: every result is selectable, and opening it shows its related items.
 

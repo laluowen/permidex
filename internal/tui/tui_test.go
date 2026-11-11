@@ -40,8 +40,6 @@ var keys = map[string]tea.KeyPressMsg{
 	"esc":       {Code: tea.KeyEscape},
 	"enter":     {Code: tea.KeyEnter},
 	"backspace": {Code: tea.KeyBackspace},
-	"left":      {Code: tea.KeyLeft},
-	"right":     {Code: tea.KeyRight},
 	"up":        {Code: tea.KeyUp},
 	"down":      {Code: tea.KeyDown},
 	"ctrl+o":    {Code: 'o', Mod: tea.ModCtrl},
@@ -77,7 +75,7 @@ func shownNames(m *Model) []string {
 func TestOpenRoleListsPermissions(t *testing.T) {
 	m := testModel(t)
 	selectNamed(t, m, roleAdmin)
-	press(m, "right")
+	press(m, "enter")
 	if want := []string{permDelete, permGet}; !reflect.DeepEqual(shownNames(m), want) {
 		t.Errorf("role permissions = %v, want %v", shownNames(m), want)
 	}
@@ -115,15 +113,15 @@ func TestServiceOpensPermissionsAndRoles(t *testing.T) {
 func TestDrillDownSelectionAndBack(t *testing.T) {
 	m := testModel(t)
 	selectNamed(t, m, roleAdmin)
-	press(m, "right")
+	press(m, "enter")
 	selectNamed(t, m, permDelete)
-	press(m, "right")
+	press(m, "enter")
 	if len(m.stack) != 2 {
 		t.Fatalf("stack depth = %d, want 2", len(m.stack))
 	}
-	press(m, "left")
+	press(m, "esc")
 	if got := shownNames(m); !reflect.DeepEqual(got, []string{permDelete, permGet}) {
-		t.Errorf("left should return to the role's permissions, got %v", got)
+		t.Errorf("esc should return to the role's permissions, got %v", got)
 	}
 	if got := m.cur.cursor; m.shown[got].Name != permDelete {
 		t.Errorf("cursor not restored on the permission we came from")
@@ -137,7 +135,7 @@ func TestDrillDownSelectionAndBack(t *testing.T) {
 func TestBackspaceEditsSearchBeforeGoingBack(t *testing.T) {
 	m := testModel(t)
 	selectNamed(t, m, roleAdmin)
-	press(m, "right")
+	press(m, "enter")
 	press(m, "g")
 	press(m, "backspace")
 	if len(m.stack) != 1 || m.input.Value() != "" {
@@ -152,7 +150,7 @@ func TestBackspaceEditsSearchBeforeGoingBack(t *testing.T) {
 func TestEscClearsSearchFirst(t *testing.T) {
 	m := testModel(t)
 	selectNamed(t, m, roleAdmin)
-	press(m, "right")
+	press(m, "enter")
 	press(m, "g")
 	press(m, "esc")
 	if len(m.stack) != 1 || m.input.Value() != "" {
@@ -160,39 +158,37 @@ func TestEscClearsSearchFirst(t *testing.T) {
 	}
 }
 
-func TestLeftAtTopDoesNothing(t *testing.T) {
+func TestEscAtTopDoesNothing(t *testing.T) {
 	m := testModel(t)
 	before := len(m.shown)
-	press(m, "left")
+	press(m, "esc")
 	if len(m.stack) != 0 || len(m.shown) != before {
-		t.Errorf("left at top should be a no-op (stack %d, shown %d)", len(m.stack), len(m.shown))
+		t.Errorf("esc at top should be a no-op (stack %d, shown %d)", len(m.stack), len(m.shown))
 	}
 }
 
 func TestResetToStartScreen(t *testing.T) {
 	m := testModel(t)
 	selectNamed(t, m, roleAdmin)
-	press(m, "right")
+	press(m, "enter")
 	press(m, "ctrl+o")
 	if len(m.stack) != 0 || !m.cur.home || len(m.shown) != 0 {
 		t.Errorf("ctrl+o left stack %d, home %v, shown %d", len(m.stack), m.cur.home, len(m.shown))
 	}
 }
 
-func TestQuitOnlyWithEmptySearch(t *testing.T) {
+func TestQuitIsCtrlCOnly(t *testing.T) {
 	m := testModel(t)
-	press(m, "c")
 	_, cmd := m.Update(tea.KeyPressMsg{Code: 'q', Text: "q"})
 	if cmd != nil {
-		t.Error("q with a search should type, not quit")
+		t.Error("q should type, not quit")
 	}
-	if m.input.Value() != "cq" {
-		t.Errorf("search = %q, want cq", m.input.Value())
+	if m.input.Value() != "q" {
+		t.Errorf("search = %q, want q", m.input.Value())
 	}
-	m.setFilter("")
-	_, cmd = m.Update(tea.KeyPressMsg{Code: 'q', Text: "q"})
+	_, cmd = m.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
 	if cmd == nil {
-		t.Error("q with empty search should quit")
+		t.Error("ctrl+c should quit")
 	}
 }
 
@@ -232,7 +228,7 @@ func TestRoleRowShowsTitleAndID(t *testing.T) {
 func TestHelpToggle(t *testing.T) {
 	m := testModel(t)
 	press(m, "?")
-	if !m.help || !strings.Contains(m.View().Content, "left, esc") {
+	if !m.help || !strings.Contains(m.View().Content, "ctrl+c") {
 		t.Fatal("? should open the help overlay")
 	}
 	press(m, "down")
@@ -250,7 +246,7 @@ func TestListViewHasSectionHeadersBreadcrumbAndHintBar(t *testing.T) {
 	m.setFilter("compute")
 	m.refresh()
 	out := m.View().Content
-	for _, want := range []string{"Roles (2)", "Permissions (3)", "→ enter open", "search"} {
+	for _, want := range []string{"Roles (2)", "Permissions (3)", "enter open", "search"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("list view missing %q:\n%s", want, out)
 		}
@@ -268,14 +264,15 @@ func TestViewRendersStartAndRows(t *testing.T) {
 func TestSearchIsScopedToTheView(t *testing.T) {
 	m := testModel(t)
 	selectNamed(t, m, roleAdmin)
-	press(m, "right")
+	press(m, "enter")
 	for _, c := range "delete" {
 		press(m, string(c))
 	}
 	if got := shownNames(m); !reflect.DeepEqual(got, []string{permDelete}) {
 		t.Errorf("role search = %v, want only its permissions matching", got)
 	}
-	press(m, "left")
+	press(m, "esc")
+	press(m, "esc")
 	if got := len(m.shown); got != len(m.all) {
 		t.Errorf("back should restore the home list (%d items), got %d", len(m.all), got)
 	}
@@ -287,8 +284,21 @@ func TestSearchIsScopedToTheView(t *testing.T) {
 func TestPlaceholderNamesTheViewsSearch(t *testing.T) {
 	m := testModel(t)
 	selectNamed(t, m, roleAdmin)
-	press(m, "right")
+	press(m, "enter")
 	if m.input.Placeholder != "search permissions" {
 		t.Errorf("role placeholder = %q", m.input.Placeholder)
+	}
+}
+
+func TestBreadcrumbDropsOldestCrumbs(t *testing.T) {
+	m := testModel(t)
+	m.width = 40
+	selectNamed(t, m, roleAdmin)
+	press(m, "enter")
+	selectNamed(t, m, permDelete)
+	press(m, "enter")
+	crumb := m.breadcrumb()
+	if !strings.HasPrefix(crumb, "… › ") || !strings.HasSuffix(crumb, permDelete) {
+		t.Errorf("breadcrumb = %q, want truncated from the left", crumb)
 	}
 }
