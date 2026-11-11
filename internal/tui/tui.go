@@ -342,7 +342,7 @@ var (
 		{"esc", "back (esc clears the search first)"},
 		{"backspace", "delete"},
 		{keyTab, "select or deselect the item"},
-		{"ctrl+r ctrl+s ctrl+p", "jump to roles, permissions, services"},
+		{"ctrl+r ctrl+s ctrl+p", "jump to roles, services, permissions"},
 		{keyCtrlQ, "quit and print the selection as YAML"},
 		{"ctrl+o home", "reset to the start screen"},
 		{"?", "this help"},
@@ -431,8 +431,13 @@ func (m *Model) listView() string {
 func (m *Model) helpView() string {
 	var b strings.Builder
 	b.WriteString(titleStyle.Render("keys") + "\n\n")
+	width := 0
 	for _, h := range helpHints {
-		b.WriteString("  " + keyStyle.Render(h.key) + "  " + h.desc + "\n")
+		width = max(width, lipgloss.Width(h.key))
+	}
+	for _, h := range helpHints {
+		pad := strings.Repeat(" ", width-lipgloss.Width(h.key))
+		b.WriteString("  " + keyStyle.Render(h.key) + pad + "  " + h.desc + "\n")
 	}
 	b.WriteString("\n" + dim.Render("? or esc close"))
 	return b.String()
