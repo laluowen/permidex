@@ -71,7 +71,7 @@ func browse() error {
 		return err
 	}
 	m := tui.New(index.Build(snap.Roles), snap.FetchedAt)
-	final, err := tea.NewProgram(m).Run()
+	final, err := tea.NewProgram(m, tea.WithOutput(os.Stderr)).Run()
 	if err != nil {
 		return err
 	}

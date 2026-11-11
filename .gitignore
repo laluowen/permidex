@@ -9,3 +9,6 @@ coverage.*
 
 # GoReleaser local output
 dist/
+
+# local review notes, not tracked
+code-review.md

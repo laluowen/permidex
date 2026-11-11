@@ -79,12 +79,12 @@ Built with Bubble Tea, `bubbles/list` or `bubbles/textinput` for search, lipglos
 | `enter` | detail for the selected item |
 | `enter` | open the selected item (drill-down view) |
 | `esc` | back (clears the search first) |
-| `backspace` | delete, or back when the search is empty |
+| `backspace` | delete |
 | `ctrl+o` or `home` | reset to the start screen |
 | `?` | key help |
 | `ctrl+c` | quit |
 
-Pivot keys (`ctrl+r`, `ctrl+p`, `ctrl+s`) were replaced by drill-down: every result is selectable, and opening it shows its related items.
+Navigation is drill-down: every result is selectable, and opening it shows its related items. `ctrl+r`, `ctrl+p` and `ctrl+s` only jump the cursor to a section.
 
 ### Pivot stack
 

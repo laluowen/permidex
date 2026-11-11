@@ -19,7 +19,7 @@ func (m *Model) Selection() string {
 		case index.KindRole:
 			line := "  - " + it.Name
 			if t := m.title(it); t != "" {
-				line += " # " + t
+				line += " # " + strings.Join(strings.Fields(t), " ")
 			}
 			roles = append(roles, line)
 		case index.KindService:
