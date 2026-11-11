@@ -128,3 +128,28 @@ Releases: GoReleaser, draft then publish (lalu-uk org rules: immutable releases,
 5. `internal/index` with tests.
 6. `internal/tui`: list, search, detail, pivots, back stack.
 7. README: install, `permidex refresh`, keys.
+
+## 10. v1.1.0: fuzzy search
+
+Goal: type loosely (`cmpadm` → `roles/compute.admin`) and still get sensible results, with exact substring matches always ranked first.
+
+### Behavior
+
+1. Exact substring matches first, shortest name first.
+2. Then subsequence matches, scored by tight gaps and word-boundary hits (`.`, `/`).
+3. Within a tier, keep the current stable order.
+4. Match on name only. Title matching is out of scope for v1.1.0.
+
+### Steps
+
+1. Add a scoring function (new `internal/match` package, or a small file in `internal/tui`). No dependency; `github.com/sahilm/fuzzy` is the fallback if the scoring gets hard to own.
+2. Wire it into `refresh()` in `internal/tui/tui.go`, replacing the substring filter.
+3. Tests: table of query → expected top results; substring beats subsequence; empty query keeps the original order.
+4. Measure per-keystroke filter time on the real cache (2429 roles plus their permissions and services). Only add an index if it is slow.
+5. Tune the ranking on real queries, then update the README keys section if the behavior needs describing.
+
+### Done when
+
+- `go test -race ./...` and `golangci-lint run` pass.
+- Real-cache queries feel right on a manual run.
+- Tagged v1.1.0 via the release flow.
