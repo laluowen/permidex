@@ -18,7 +18,10 @@ const (
 	homeCrumb       = "search"
 	homePlaceholder = "search roles, permissions and services"
 	keyEsc          = "esc"
-	hint            = "↑↓ move  enter open  esc back  tab select  ? help  ctrl+q done  ctrl+c abort"
+	keyEnter        = "enter"
+	keyTab          = "tab"
+	keyCtrlC        = "ctrl+c"
+	keyCtrlQ        = "ctrl+q"
 )
 
 // view is one screen: details about what it was opened from, a selectable list, and its own search.
@@ -89,10 +92,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *Model) key(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	s := k.String()
-	if s == "ctrl+c" {
+	if s == keyCtrlC {
 		return m, tea.Quit
 	}
-	if s == "ctrl+q" && !m.help {
+	if s == keyCtrlQ && !m.help {
 		m.emit = true
 		return m, tea.Quit
 	}
@@ -112,7 +115,7 @@ func (m *Model) key(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		} else {
 			m.pop()
 		}
-	case "tab":
+	case keyTab:
 		if it, ok := m.selected(); ok {
 			if m.picked[it] {
 				delete(m.picked, it)
@@ -126,7 +129,7 @@ func (m *Model) key(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.jump(index.KindService)
 	case "ctrl+p":
 		m.jump(index.KindPermission)
-	case "enter":
+	case keyEnter:
 		m.open()
 	case "ctrl+o", "home":
 		m.stack = nil
@@ -297,10 +300,53 @@ func (m *Model) View() tea.View {
 	return v
 }
 
+// Colours are ANSI palette indices, so they follow the terminal's theme.
 var (
-	bold    = lipgloss.NewStyle().Bold(true)
-	reverse = lipgloss.NewStyle().Reverse(true)
-	dim     = lipgloss.NewStyle().Faint(true)
+	bold       = lipgloss.NewStyle().Bold(true)
+	reverse    = lipgloss.NewStyle().Reverse(true)
+	dim        = lipgloss.NewStyle().Faint(true)
+	titleStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6"))
+	sectionSty = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("5"))
+	keyStyle   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("3"))
+)
+
+// keyHint is one key and what it does, for the hint bar and the help screen.
+type keyHint struct {
+	key, desc string
+}
+
+// hintBar renders key hints as "key desc", with the keys in their own colour.
+func hintBar(hints []keyHint) string {
+	parts := make([]string, len(hints))
+	for i, h := range hints {
+		parts[i] = keyStyle.Render(h.key) + " " + dim.Render(h.desc)
+	}
+	return strings.Join(parts, "  ")
+}
+
+var (
+	listHints = []keyHint{
+		{"↑↓", "move"},
+		{keyEnter, "open"},
+		{"esc", "back"},
+		{keyTab, "select"},
+		{"?", "help"},
+		{keyCtrlQ, "done"},
+		{keyCtrlC, "abort"},
+	}
+	helpHints = []keyHint{
+		{"type", "search (roles match name or title)"},
+		{"↑↓ pgup pgdn", "move"},
+		{keyEnter, "open the selected item"},
+		{"esc", "back (esc clears the search first)"},
+		{"backspace", "delete"},
+		{keyTab, "select or deselect the item"},
+		{"ctrl+r ctrl+s ctrl+p", "jump to roles, permissions, services"},
+		{keyCtrlQ, "quit and print the selection as YAML"},
+		{"ctrl+o home", "reset to the start screen"},
+		{"?", "this help"},
+		{keyCtrlC, "abort (print nothing)"},
+	}
 )
 
 type row struct {
@@ -313,7 +359,7 @@ func (m *Model) rows() []row {
 	var out []row
 	for i, it := range m.shown {
 		if i == 0 || it.Kind != m.shown[i-1].Kind {
-			out = append(out, row{text: bold.Render(fmt.Sprintf("%s (%d)", kindTitle(it.Kind), m.counts[it.Kind])), idx: -1})
+			out = append(out, row{text: sectionSty.Render(fmt.Sprintf("%s (%d)", kindTitle(it.Kind), m.counts[it.Kind])), idx: -1})
 		}
 		mark := "[ ] "
 		if m.picked[it] {
@@ -350,7 +396,7 @@ func (m *Model) breadcrumb() string {
 
 func (m *Model) listView() string {
 	var top []string
-	top = append(top, dim.Render(fmt.Sprintf("permidex  data from %s  selected %d", m.fetched.Format("2006-01-02"), len(m.picked))))
+	top = append(top, titleStyle.Render("permidex")+dim.Render(fmt.Sprintf("  data from %s  selected %d", m.fetched.Format("2006-01-02"), len(m.picked))))
 	top = append(top, bold.Render(m.breadcrumb()))
 	top = append(top, m.cur.info...)
 	top = append(top, m.input.View(), "")
@@ -378,26 +424,14 @@ func (m *Model) listView() string {
 			body = append(body, r.text)
 		}
 	}
-	return strings.Join(append(append(top, body...), dim.Render(hint)), "\n")
+	return strings.Join(append(append(top, body...), hintBar(listHints)), "\n")
 }
 
 func (m *Model) helpView() string {
 	var b strings.Builder
-	b.WriteString(bold.Render("keys") + "\n\n")
-	for _, l := range []string{
-		"type                 search (roles match name or title)",
-		"up down pgup pgdn    move",
-		"enter                open the selected item",
-		"esc                  back (esc clears the search first)",
-		"backspace            delete",
-		"tab                  select or deselect the item",
-		"ctrl+r, ctrl+s, ctrl+p  jump to roles, services, permissions",
-		"ctrl+q               quit and print the selection as YAML",
-		"ctrl+o, home         reset to the start screen",
-		"?                    this help",
-		"ctrl+c               abort (print nothing)",
-	} {
-		b.WriteString("  " + l + "\n")
+	b.WriteString(titleStyle.Render("keys") + "\n\n")
+	for _, h := range helpHints {
+		b.WriteString("  " + keyStyle.Render(h.key) + "  " + h.desc + "\n")
 	}
 	b.WriteString("\n" + dim.Render("? or esc close"))
 	return b.String()

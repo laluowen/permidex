@@ -2,6 +2,7 @@ package tui
 
 import (
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -17,6 +18,8 @@ const (
 	roleAdmin  = "roles/compute.admin"
 	svcCompute = "compute"
 )
+
+var ansiPattern = regexp.MustCompile("\x1b\\[[0-9;]*m")
 
 func testModel(t *testing.T) *Model {
 	t.Helper()
@@ -243,7 +246,7 @@ func TestListViewHasSectionHeadersBreadcrumbAndHintBar(t *testing.T) {
 	m := testModel(t)
 	m.setFilter("compute")
 	m.refresh()
-	out := m.View().Content
+	out := ansiPattern.ReplaceAllString(m.View().Content, "")
 	for _, want := range []string{"Roles (2)", "Permissions (3)", "enter open", "search"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("list view missing %q:\n%s", want, out)
