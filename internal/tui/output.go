@@ -33,7 +33,7 @@ func (m *Model) Selection() string {
 	for _, sec := range []struct {
 		key   string
 		lines []string
-	}{{"roles", roles}, {"services", services}, {"permissions", perms}} {
+	}{{"roles", roles}, {"permissions", perms}, {"services", services}} {
 		if len(sec.lines) == 0 {
 			continue
 		}

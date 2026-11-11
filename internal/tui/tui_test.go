@@ -316,7 +316,7 @@ func TestTabSelectsAndOutputsYAML(t *testing.T) {
 		t.Errorf("Selection before ctrl+q = %q, want empty", got)
 	}
 	_, _ = m.Update(tea.KeyPressMsg{Code: 'q', Mod: tea.ModCtrl})
-	want := "roles:\n  - roles/compute.admin # Compute Admin\nservices:\n  - compute\npermissions:\n  - storage.objects.get\n"
+	want := "roles:\n  - roles/compute.admin # Compute Admin\npermissions:\n  - storage.objects.get\nservices:\n  - compute\n"
 	if got := m.Selection(); got != want {
 		t.Errorf("Selection = %q, want %q", got, want)
 	}
