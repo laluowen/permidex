@@ -15,6 +15,7 @@ const (
 	permGet    = "compute.instances.get"
 	permDelete = "compute.instances.delete"
 	roleAdmin  = "roles/compute.admin"
+	svcCompute = "compute"
 )
 
 func testModel(t *testing.T) *Model {
@@ -90,7 +91,7 @@ func TestPermissionShowsServiceAndRoles(t *testing.T) {
 	press(m, "enter")
 	selectNamed(t, m, permDelete)
 	press(m, "enter")
-	if want := []string{"compute", roleAdmin}; !reflect.DeepEqual(shownNames(m), want) {
+	if want := []string{svcCompute, roleAdmin}; !reflect.DeepEqual(shownNames(m), want) {
 		t.Errorf("permission view = %v, want service then roles %v", shownNames(m), want)
 	}
 	if !strings.Contains(m.View().Content, "service: compute") {
@@ -100,7 +101,7 @@ func TestPermissionShowsServiceAndRoles(t *testing.T) {
 
 func TestServiceOpensPermissionsAndRoles(t *testing.T) {
 	m := testModel(t)
-	selectNamed(t, m, "compute")
+	selectNamed(t, m, svcCompute)
 	press(m, "enter")
 	if len(m.shown) == 0 {
 		t.Fatal("service view should list items")
@@ -306,19 +307,18 @@ func TestTabSelectsAndOutputsYAML(t *testing.T) {
 	press(m, "tab")
 	selectNamed(t, m, roleAdmin)
 	press(m, "tab")
-	selectNamed(t, m, "compute")
+	selectNamed(t, m, svcCompute)
 	press(m, "tab")
-	press(m, "tab")
-	if len(m.picked) != 2 {
-		t.Fatalf("picked %d items, want 2 (tab toggles)", len(m.picked))
+	if len(m.picked) != 3 {
+		t.Fatalf("picked %d items, want 3 (tab toggles)", len(m.picked))
 	}
 	if got := m.Selection(); got != "" {
 		t.Errorf("Selection before ctrl+q = %q, want empty", got)
 	}
 	_, _ = m.Update(tea.KeyPressMsg{Code: 'q', Mod: tea.ModCtrl})
-	want := "roles:\n  - roles/compute.admin # Compute Admin\n"
-	if got := m.Selection(); !strings.HasPrefix(got, want) {
-		t.Errorf("Selection = %q, want prefix %q", got, want)
+	want := "roles:\n  - roles/compute.admin # Compute Admin\nservices:\n  - compute\npermissions:\n  - storage.objects.get\n"
+	if got := m.Selection(); got != want {
+		t.Errorf("Selection = %q, want %q", got, want)
 	}
 }
 
@@ -348,9 +348,9 @@ func TestJumpKeys(t *testing.T) {
 	}
 }
 
-func TestServiceShownAsFQDN(t *testing.T) {
+func TestServiceShownAsPrefix(t *testing.T) {
 	m := testModel(t)
-	if got := m.label(index.Item{Kind: index.KindService, Name: "compute"}); got != "compute.googleapis.com" {
+	if got := m.label(index.Item{Kind: index.KindService, Name: svcCompute}); got != svcCompute {
 		t.Errorf("service label = %q", got)
 	}
 }

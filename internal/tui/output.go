@@ -23,7 +23,7 @@ func (m *Model) Selection() string {
 			}
 			roles = append(roles, line)
 		case index.KindService:
-			services = append(services, "  - "+index.ServiceFQDN(it.Name))
+			services = append(services, "  - "+it.Name)
 		default:
 			perms = append(perms, "  - "+it.Name)
 		}

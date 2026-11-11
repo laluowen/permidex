@@ -153,3 +153,7 @@ Goal: type loosely (`cmpadm` → `roles/compute.admin`) and still get sensible r
 - `go test -race ./...` and `golangci-lint run` pass.
 - Real-cache queries feel right on a manual run.
 - Tagged v1.1.0 via the release flow.
+
+### Services (decision)
+
+GCP's roles API has no service field and no permission-to-service mapping, so a service is only the first dot-segment of a permission name (`compute`). It is browsable and selectable as a convenience and written to the YAML as-is. It is not an API hostname, so no `.googleapis.com` FQDN is derived.

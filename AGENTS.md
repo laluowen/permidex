@@ -24,3 +24,4 @@ Terminal browser for GCP predefined IAM roles and permissions. One static Go bin
 ## Commits
 
 Conventional Commits (`feat:`, `fix:`, `docs:`, `ci:`, `chore:`; `!` or a `BREAKING CHANGE:` footer for breaking changes).
+- Services are the first dot-segment of a permission (`compute`), shown and written to the YAML as-is. GCP exposes no permission-to-service mapping and the roles API has no service field, so there is no FQDN (`*.googleapis.com`): deriving it would guess. Don't add FQDN mapping or per-service exceptions.

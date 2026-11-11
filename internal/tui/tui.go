@@ -190,7 +190,7 @@ func (m *Model) viewFor(it index.Item) view {
 		v.placeholder = "search permissions"
 	case index.KindPermission:
 		svc := index.Service(it.Name)
-		v.info = []string{"service: " + index.ServiceFQDN(svc)}
+		v.info = []string{"service: " + svc}
 		v.items = append([]index.Item{{Kind: index.KindService, Name: svc}}, m.idx.RolesGranting(it.Name)...)
 		v.placeholder = "search service and roles"
 	default:
@@ -275,9 +275,6 @@ func (m *Model) title(it index.Item) string {
 func (m *Model) label(it index.Item) string {
 	if t := m.title(it); t != "" {
 		return t + " [" + it.Name + "]"
-	}
-	if it.Kind == index.KindService {
-		return index.ServiceFQDN(it.Name)
 	}
 	return it.Name
 }
