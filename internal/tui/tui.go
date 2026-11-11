@@ -1,4 +1,4 @@
-// Package tui is the Bubble Tea browser: a search box, grouped results, pivots with a back stack, and a detail view.
+// Package tui is the Bubble Tea browser: a search box, grouped selectable lists, and drill-down views with a back stack.
 package tui
 
 import (
@@ -14,18 +14,16 @@ import (
 
 const (
 	defaultHeight = 24
-	// listChrome is the fixed lines around the results: header, input, blank, status, hint bar.
-	listChrome = 5
-	// detailChrome is the fixed lines around the detail body: header, blank, status, hint bar.
-	detailChrome = 4
-	pageStep     = 10
-	searchTitle  = "search"
-	keyEsc       = "esc"
+	pageStep      = 10
+	homeCrumb     = "search"
+	keyEsc        = "esc"
+	hint          = "↑↓ move  → enter open  ← esc back  ? help  q quit"
 )
 
-// pivot is one list on the stack: what it shows, the filter typed on it, and where the cursor was.
-type pivot struct {
-	title  string
+// view is one screen: details about what it was opened from, a selectable list, and its own search.
+type view struct {
+	crumb  string
+	info   []string
 	items  []index.Item
 	filter string
 	cursor int
@@ -37,22 +35,17 @@ type Model struct {
 	idx     *index.Index
 	fetched time.Time
 	all     []index.Item
-	cur     pivot
-	stack   []pivot
+	cur     view
+	stack   []view
 	input   textinput.Model
 	shown   []index.Item
 	counts  [3]int
-	cursor  int
 	height  int
-	detail  bool
 	help    bool
-	scroll  int
-	status  string
 }
 
-// New returns a model that searches every item in idx. fetched is the cache's fetch time, shown in the header.
+// New returns a model on the blank start screen. fetched is the cache's fetch time, shown in the header.
 func New(idx *index.Index, fetched time.Time) *Model {
-	all := idx.All()
 	in := textinput.New()
 	in.Prompt = "/ "
 	in.Placeholder = "search roles, permissions and services"
@@ -60,13 +53,17 @@ func New(idx *index.Index, fetched time.Time) *Model {
 	m := &Model{
 		idx:     idx,
 		fetched: fetched,
-		all:     all,
-		cur:     pivot{title: searchTitle, items: all, home: true},
+		all:     idx.All(),
 		input:   in,
 		height:  defaultHeight,
 	}
+	m.cur = m.homeView()
 	m.refresh()
 	return m
+}
+
+func (m *Model) homeView() view {
+	return view{crumb: homeCrumb, items: m.all, home: true}
 }
 
 // Init implements tea.Model.
@@ -95,11 +92,6 @@ func (m *Model) key(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	}
-	if m.detail {
-		m.detailKey(s)
-		return m, nil
-	}
-	m.status = ""
 
 	switch s {
 	case "?":
@@ -110,32 +102,25 @@ func (m *Model) key(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 		m.typeKey(k)
 	case keyEsc:
-		if len(m.stack) > 0 {
-			m.pop()
-		} else {
+		if m.input.Value() != "" {
 			m.setFilter("")
+		} else {
+			m.pop()
 		}
+	case "left":
+		m.pop()
 	case "backspace":
-		if m.input.Value() == "" && len(m.stack) > 0 {
+		if m.input.Value() == "" {
 			m.pop()
 		} else {
 			m.typeKey(k)
 		}
+	case "right", "enter":
+		m.open()
 	case "ctrl+o", "home":
 		m.stack = nil
-		m.cur = pivot{title: searchTitle, items: m.all, home: true}
+		m.cur = m.homeView()
 		m.setFilter("")
-	case "enter":
-		if _, ok := m.selected(); ok {
-			m.detail = true
-			m.scroll = 0
-		}
-	case "ctrl+r":
-		m.pivotTo(index.KindPermission, "roles granting ", m.idx.RolesGranting)
-	case "ctrl+p":
-		m.pivotTo(index.KindRole, "permissions in ", m.idx.PermissionsIn)
-	case "ctrl+s":
-		m.pivotService()
 	case "up":
 		m.moveCursor(-1)
 	case "down":
@@ -155,83 +140,83 @@ func (m *Model) typeKey(k tea.KeyPressMsg) {
 	before := m.input.Value()
 	m.input, _ = m.input.Update(k)
 	if m.input.Value() != before {
-		m.cursor = 0
+		m.cur.cursor = 0
 	}
 }
 
-func (m *Model) detailKey(s string) {
-	switch s {
-	case keyEsc, "backspace", "enter", "q":
-		m.detail = false
-	case "?":
-		m.help = true
-	case "up":
-		m.scroll--
-	case "down":
-		m.scroll++
-	case "pgup":
-		m.scroll -= pageStep
-	case "pgdown":
-		m.scroll += pageStep
-	}
-}
-
-// pivotTo pushes the list of items of kind want that the selected item leads to, using look.
-func (m *Model) pivotTo(want index.Kind, label string, look func(string) []index.Item) {
+// open drills into the selected item: a new view with its details and related items.
+func (m *Model) open() {
 	it, ok := m.selected()
-	if !ok || it.Kind != want {
-		m.status = fmt.Sprintf("select a %s first", kindName(want))
+	if !ok {
 		return
 	}
-	m.push(label+it.Name, look(it.Name))
+	m.push(m.viewFor(it))
 }
 
-func (m *Model) pivotService() {
-	it, ok := m.selected()
-	if !ok || (it.Kind != index.KindService && it.Kind != index.KindPermission) {
-		m.status = "select a service or permission first"
-		return
+// viewFor builds the view for a role, permission or service.
+func (m *Model) viewFor(it index.Item) view {
+	v := view{crumb: m.label(it)}
+	switch it.Kind {
+	case index.KindRole:
+		r, _ := m.idx.Role(it.Name)
+		v.info = []string{
+			"title:       " + r.Title,
+			"stage:       " + r.Stage,
+			"description: " + r.Description,
+			fmt.Sprintf("%d permissions", len(r.IncludedPermissions)),
+		}
+		v.items = m.idx.PermissionsIn(it.Name)
+	case index.KindPermission:
+		svc := index.Service(it.Name)
+		v.info = []string{"service: " + svc}
+		v.items = append([]index.Item{{Kind: index.KindService, Name: svc}}, m.idx.RolesGranting(it.Name)...)
+	default:
+		perms := m.idx.PermissionsOf(it.Name)
+		roles := m.idx.RolesOf(it.Name)
+		v.info = []string{
+			fmt.Sprintf("%d permissions", len(perms)),
+			fmt.Sprintf("%d roles", len(roles)),
+		}
+		v.items = append(perms, roles...)
 	}
-	svc := it.Name
-	if it.Kind == index.KindPermission {
-		svc = index.Service(it.Name)
-	}
-	m.push("permissions in service "+svc, m.idx.PermissionsOf(svc))
+	return v
 }
 
-func (m *Model) push(title string, items []index.Item) {
+func (m *Model) push(v view) {
 	m.cur.filter = m.input.Value()
-	m.cur.cursor = m.cursor
 	m.stack = append(m.stack, m.cur)
-	m.cur = pivot{title: title, items: items}
+	m.cur = v
 	m.setFilter("")
 }
 
+// pop goes back one view, restoring its search and cursor. It does nothing at the top.
 func (m *Model) pop() {
+	if len(m.stack) == 0 {
+		return
+	}
 	top := m.stack[len(m.stack)-1]
 	m.stack = m.stack[:len(m.stack)-1]
 	m.cur = top
-	m.setFilter(top.filter)
-	m.cursor = top.cursor
+	m.input.SetValue(top.filter)
 }
 
 func (m *Model) setFilter(s string) {
 	m.input.SetValue(s)
-	m.cursor = 0
+	m.cur.cursor = 0
 }
 
 func (m *Model) moveCursor(d int) {
-	m.cursor += d
+	m.cur.cursor += d
 }
 
-// refresh recomputes the visible items from the current list and filter, and clamps the cursor.
+// refresh recomputes the visible items from the current view and search, and clamps the cursor.
 // The start screen shows nothing until something is typed.
 func (m *Model) refresh() {
 	m.shown = nil
 	m.counts = [3]int{}
 	q := strings.ToLower(m.input.Value())
 	if m.cur.home && q == "" {
-		m.cursor = 0
+		m.cur.cursor = 0
 		return
 	}
 	for _, it := range m.cur.items {
@@ -241,7 +226,7 @@ func (m *Model) refresh() {
 		m.shown = append(m.shown, it)
 		m.counts[it.Kind]++
 	}
-	m.cursor = min(max(m.cursor, 0), max(len(m.shown)-1, 0))
+	m.cur.cursor = min(max(m.cur.cursor, 0), max(len(m.shown)-1, 0))
 }
 
 // matches reports whether q (already lowercased) appears in the item's name or, for roles, its title.
@@ -270,22 +255,17 @@ func (m *Model) label(it index.Item) string {
 }
 
 func (m *Model) selected() (index.Item, bool) {
-	if m.cursor < 0 || m.cursor >= len(m.shown) {
+	if m.cur.cursor < 0 || m.cur.cursor >= len(m.shown) {
 		return index.Item{}, false
 	}
-	return m.shown[m.cursor], true
+	return m.shown[m.cur.cursor], true
 }
 
 // View implements tea.Model.
 func (m *Model) View() tea.View {
-	var body string
-	switch {
-	case m.help:
+	body := m.listView()
+	if m.help {
 		body = m.helpView()
-	case m.detail:
-		body = m.detailView()
-	default:
-		body = m.listView()
 	}
 	v := tea.NewView(body)
 	v.AltScreen = true
@@ -311,7 +291,7 @@ func (m *Model) rows() []row {
 			out = append(out, row{text: bold.Render(fmt.Sprintf("%s (%d)", kindTitle(it.Kind), m.counts[it.Kind])), idx: -1})
 		}
 		text := "  " + m.label(it)
-		if i == m.cursor {
+		if i == m.cur.cursor {
 			text = reverse.Render("> " + m.label(it))
 		}
 		out = append(out, row{text: text, idx: i})
@@ -319,133 +299,65 @@ func (m *Model) rows() []row {
 	return out
 }
 
-func (m *Model) listView() string {
-	var b strings.Builder
-	header := fmt.Sprintf("permidex  %s  (%d)  data from %s", m.cur.title, len(m.shown), m.fetched.Format("2006-01-02"))
-	b.WriteString(bold.Render(header) + "\n")
-	b.WriteString(m.input.View() + "\n\n")
+// crumbs is the path from the start screen to the current view.
+func (m *Model) crumbs() string {
+	parts := make([]string, 0, len(m.stack)+1)
+	for _, v := range m.stack {
+		parts = append(parts, v.crumb)
+	}
+	parts = append(parts, m.cur.crumb)
+	return strings.Join(parts, " › ")
+}
 
+func (m *Model) listView() string {
+	var top []string
+	top = append(top, bold.Render("permidex  "+m.crumbs()+"  data from "+m.fetched.Format("2006-01-02")))
+	top = append(top, m.cur.info...)
+	top = append(top, m.input.View(), "")
+
+	var body []string
 	switch {
 	case len(m.shown) == 0 && m.cur.home && m.input.Value() == "":
-		b.WriteString(dim.Render("type to search roles, permissions and services") + "\n")
+		body = append(body, dim.Render("type to search roles, permissions and services"))
+	case len(m.shown) == 0 && m.input.Value() != "":
+		body = append(body, dim.Render("no matches"))
 	case len(m.shown) == 0:
-		b.WriteString(dim.Render("no matches") + "\n")
+		body = append(body, dim.Render("nothing here"))
 	default:
 		rows := m.rows()
-		visible := max(m.height-listChrome, 1)
+		visible := max(m.height-len(top)-1, 1)
 		cursorRow := 0
 		for i, r := range rows {
-			if r.idx == m.cursor {
+			if r.idx == m.cur.cursor {
 				cursorRow = i
 			}
 		}
 		start := min(max(cursorRow-visible/2, 0), max(len(rows)-visible, 0))
 		end := min(start+visible, len(rows))
 		for _, r := range rows[start:end] {
-			b.WriteString(r.text + "\n")
+			body = append(body, r.text)
 		}
 	}
-	b.WriteString(m.footer())
-	return b.String()
-}
-
-func (m *Model) detailView() string {
-	it, ok := m.selected()
-	if !ok {
-		return dim.Render("nothing selected") + "\n" + m.footer()
-	}
-	lines := m.detailLines(it)
-	rows := max(m.height-detailChrome, 1)
-	m.scroll = min(max(m.scroll, 0), max(len(lines)-rows, 0))
-	end := min(m.scroll+rows, len(lines))
-
-	var b strings.Builder
-	b.WriteString(bold.Render(kindName(it.Kind)+" "+m.label(it)) + "\n\n")
-	for _, l := range lines[m.scroll:end] {
-		b.WriteString(l + "\n")
-	}
-	b.WriteString(m.footer())
-	return b.String()
+	return strings.Join(append(append(top, body...), dim.Render(hint)), "\n")
 }
 
 func (m *Model) helpView() string {
 	var b strings.Builder
 	b.WriteString(bold.Render("keys") + "\n\n")
 	for _, l := range []string{
-		"type             search (roles match name or title)",
-		"up down pgup pgdn  move",
-		"enter            details",
-		"ctrl+r           roles granting the selected permission",
-		"ctrl+p           permissions in the selected role",
-		"ctrl+s           permissions in the selected service",
-		"esc              back (or clear the search)",
-		"backspace        delete, or back when the search is empty",
-		"ctrl+o, home     reset to the start",
-		"?                this help",
-		"q, ctrl+c        quit (q only when the search is empty)",
+		"type                 search (roles match name or title)",
+		"up down pgup pgdn    move",
+		"enter, right         open the selected item",
+		"left, esc            back (esc clears the search first)",
+		"backspace            delete, or back when the search is empty",
+		"ctrl+o, home         reset to the start screen",
+		"?                    this help",
+		"q, ctrl+c            quit (q only when the search is empty)",
 	} {
 		b.WriteString("  " + l + "\n")
 	}
 	b.WriteString("\n" + dim.Render("? or esc close"))
 	return b.String()
-}
-
-// footer is the status line and the hint bar, always the last two lines on screen.
-func (m *Model) footer() string {
-	hint := "↑↓ move  enter details  esc back  ? help  q quit"
-	if m.detail {
-		hint = "↑↓ scroll  esc back  ? help"
-	}
-	return m.status + "\n" + dim.Render(hint)
-}
-
-func (m *Model) detailLines(it index.Item) []string {
-	switch it.Kind {
-	case index.KindRole:
-		r, ok := m.idx.Role(it.Name)
-		if !ok {
-			return []string{"unknown role"}
-		}
-		perms := m.idx.PermissionsIn(it.Name)
-		return append([]string{
-			"title:       " + r.Title,
-			"stage:       " + r.Stage,
-			"description: " + r.Description,
-			"",
-			fmt.Sprintf("%d permissions:", len(r.IncludedPermissions)),
-		}, names(perms)...)
-	case index.KindPermission:
-		roles := m.idx.RolesGranting(it.Name)
-		return append([]string{
-			"service: " + index.Service(it.Name),
-			"",
-			fmt.Sprintf("granted by %d roles:", len(roles)),
-		}, names(roles)...)
-	default:
-		return []string{
-			fmt.Sprintf("%d permissions", len(m.idx.PermissionsOf(it.Name))),
-			fmt.Sprintf("%d roles", len(m.idx.RolesOf(it.Name))),
-		}
-	}
-}
-
-func names(items []index.Item) []string {
-	out := make([]string, len(items))
-	for i, it := range items {
-		out[i] = "  " + it.Name
-	}
-	return out
-}
-
-func kindName(k index.Kind) string {
-	switch k {
-	case index.KindRole:
-		return "role"
-	case index.KindPermission:
-		return "permission"
-	default:
-		return "service"
-	}
 }
 
 func kindTitle(k index.Kind) string {

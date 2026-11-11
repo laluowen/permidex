@@ -77,14 +77,14 @@ Built with Bubble Tea, `bubbles/list` or `bubbles/textinput` for search, lipglos
 |---|---|
 | type | fuzzy filter over the current list |
 | `enter` | detail for the selected item |
-| `ctrl+r` | pivot: roles for a permission |
-| `ctrl+p` | pivot: permissions in a role |
-| `ctrl+s` | pivot: permissions under a service |
-| `esc`, or `backspace` on an empty filter | pop the pivot stack (back) |
-| `ctrl+o` or `home` | reset to the full index |
-| `q` (empty filter only) / `ctrl+c` | quit |
+| `enter`, `→` | open the selected item (drill-down view) |
+| `←`, `esc` | back (`esc` clears the search first) |
+| `backspace` | delete, or back when the search is empty |
+| `ctrl+o` or `home` | reset to the start screen |
+| `?` | key help |
+| `q` (empty search only) / `ctrl+c` | quit |
 
-Pivots use `ctrl+` because bare `r`/`p`/`s` are filter input. Decided in the first build.
+Pivot keys (`ctrl+r`, `ctrl+p`, `ctrl+s`) were replaced by drill-down: every result is selectable, and opening it shows its related items.
 
 ### Pivot stack
 

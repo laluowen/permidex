@@ -31,18 +31,18 @@ The cache is `$XDG_CACHE_HOME/permidex/roles.json`, or `~/.cache/permidex/roles.
 
 ## Keys
 
+Start with a blank screen and type to search roles (by ID or title), permissions and services. Each result is selectable. Opening one shows its details and related items: a role lists its permissions; a permission shows its service and the roles that grant it; a service lists its permissions and roles.
+
 | key | action |
 |---|---|
-| type | search roles (name or title), permissions and services; the screen is blank until you type |
-| `enter` | detail for the selected item |
-| `ctrl+r` | roles that grant the selected permission |
-| `ctrl+p` | permissions in the selected role |
-| `ctrl+s` | permissions in the selected service (or the service of the selected permission) |
-| `esc`, or `backspace` on an empty filter | back (pop the pivot stack) |
+| type | search the current list |
+| `enter`, `→` | open the selected item |
+| `←`, `esc` | back (`esc` clears the search first) |
+| `backspace` | delete a character, or back when the search is empty |
+| `↑` `↓` `pgup` `pgdn` | move |
 | `ctrl+o`, `home` | reset to the start screen |
-| `up` `down` `pgup` `pgdown` | move |
 | `?` | key help (`?` or `esc` closes it) |
-| `q`, `ctrl+c` | quit (`q` only on an empty search, so you can type it) |
+| `q`, `ctrl+c` | quit (`q` only when the search is empty) |
 
 ## Development
 

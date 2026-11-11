@@ -18,7 +18,7 @@ Terminal browser for GCP predefined IAM roles and permissions. One static Go bin
 
 ## Decisions
 
-- Pivot keys are `ctrl+r`, `ctrl+p`, `ctrl+s`, not bare `r`/`p`/`s`, because bare letters are filter input. `backspace` and `q` act as back and quit only when the filter is empty.
+- Navigation is drill-down: `enter`/`→` open an item, `←`/`esc`/`backspace` (on an empty search) go back. Bare letters are search input, so there are no single-letter commands. `q` quits only when the search is empty.
 - Auth: ADC only. No `gcloud` binary at runtime.
 
 ## Commits
