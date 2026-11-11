@@ -91,8 +91,8 @@ func TestPermissionShowsServiceAndRoles(t *testing.T) {
 	press(m, "enter")
 	selectNamed(t, m, permDelete)
 	press(m, "enter")
-	if want := []string{svcCompute, roleAdmin}; !reflect.DeepEqual(shownNames(m), want) {
-		t.Errorf("permission view = %v, want service then roles %v", shownNames(m), want)
+	if want := []string{roleAdmin, svcCompute}; !reflect.DeepEqual(shownNames(m), want) {
+		t.Errorf("permission view = %v, want roles then service %v", shownNames(m), want)
 	}
 	if !strings.Contains(m.View().Content, "service: compute") {
 		t.Error("permission view should name the service")

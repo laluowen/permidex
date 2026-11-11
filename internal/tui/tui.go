@@ -191,7 +191,7 @@ func (m *Model) viewFor(it index.Item) view {
 	case index.KindPermission:
 		svc := index.Service(it.Name)
 		v.info = []string{"service: " + svc}
-		v.items = append([]index.Item{{Kind: index.KindService, Name: svc}}, m.idx.RolesGranting(it.Name)...)
+		v.items = append(m.idx.RolesGranting(it.Name), index.Item{Kind: index.KindService, Name: svc})
 		v.placeholder = "search service and roles"
 	default:
 		perms := m.idx.PermissionsOf(it.Name)
@@ -200,7 +200,7 @@ func (m *Model) viewFor(it index.Item) view {
 			fmt.Sprintf("%d permissions", len(perms)),
 			fmt.Sprintf("%d roles", len(roles)),
 		}
-		v.items = append(perms, roles...)
+		v.items = append(roles, perms...)
 		v.placeholder = "search permissions and roles"
 	}
 	return v
