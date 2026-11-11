@@ -20,7 +20,14 @@ func testModel(t *testing.T) *Model {
 	})
 	m := New(idx, time.Date(2026, 11, 11, 0, 0, 0, 0, time.UTC))
 	m.height = 40
+	showAll(m)
 	return m
+}
+
+// showAll leaves the blank start screen and lists everything, as a pivot-free view.
+func showAll(m *Model) {
+	m.cur = pivot{title: allView, items: m.all}
+	m.refresh()
 }
 
 const (
@@ -153,8 +160,8 @@ func TestResetToFullIndex(t *testing.T) {
 	press(m, "ctrl+p")
 	press(m, "ctrl+r")
 	press(m, "ctrl+o")
-	if len(m.stack) != 0 || m.cur.title != allView {
-		t.Errorf("ctrl+o left stack %d, title %q", len(m.stack), m.cur.title)
+	if len(m.stack) != 0 || !m.cur.home || len(m.shown) != 0 {
+		t.Errorf("ctrl+o left stack %d, home %v, shown %d", len(m.stack), m.cur.home, len(m.shown))
 	}
 }
 
@@ -199,5 +206,66 @@ func TestViewRendersListAndDetail(t *testing.T) {
 	detail := m.View().Content
 	if !strings.Contains(detail, "Compute Admin") || !strings.Contains(detail, "2 permissions") {
 		t.Errorf("detail view wrong:\n%s", detail)
+	}
+}
+
+func TestStartScreenIsBlankUntilTyped(t *testing.T) {
+	m := New(testModel(t).idx, time.Date(2026, 11, 11, 0, 0, 0, 0, time.UTC))
+	if len(m.shown) != 0 {
+		t.Fatalf("start screen shows %d items, want none", len(m.shown))
+	}
+	if !strings.Contains(m.View().Content, "type to search") {
+		t.Error("start screen should prompt for a search")
+	}
+	press(m, "s")
+	if len(m.shown) == 0 {
+		t.Error("typing should show matches")
+	}
+}
+
+func TestSearchMatchesRoleTitle(t *testing.T) {
+	m := testModel(t)
+	m.setFilter("storage viewer")
+	m.refresh()
+	if got := shownNames(m); len(got) != 1 || got[0] != "roles/storage.viewer" {
+		t.Errorf("title search = %v", got)
+	}
+}
+
+func TestRoleRowShowsTitleAndID(t *testing.T) {
+	m := testModel(t)
+	if got := m.label(index.Item{Kind: index.KindRole, Name: "roles/compute.admin"}); got != "Compute Admin [roles/compute.admin]" {
+		t.Errorf("label = %q", got)
+	}
+	if got := m.label(index.Item{Kind: index.KindPermission, Name: permGet}); got != permGet {
+		t.Errorf("permission label = %q", got)
+	}
+}
+
+func TestHelpToggle(t *testing.T) {
+	m := testModel(t)
+	press(m, "?")
+	if !m.help || !strings.Contains(m.View().Content, "ctrl+r") {
+		t.Fatal("? should open the help overlay")
+	}
+	press(m, "down")
+	if !m.help {
+		t.Error("other keys should not close help")
+	}
+	press(m, "esc")
+	if m.help {
+		t.Error("esc should close help")
+	}
+}
+
+func TestListViewHasSectionHeadersAndHintBar(t *testing.T) {
+	m := testModel(t)
+	m.setFilter("compute")
+	m.refresh()
+	out := m.View().Content
+	for _, want := range []string{"Roles (2)", "Permissions (3)", "? help"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("list view missing %q:\n%s", want, out)
+		}
 	}
 }

@@ -1,4 +1,4 @@
-// Package tui is the Bubble Tea browser: a filtered list, pivots with a back stack, and a detail view.
+// Package tui is the Bubble Tea browser: a search box, grouped results, pivots with a back stack, and a detail view.
 package tui
 
 import (
@@ -14,8 +14,13 @@ import (
 
 const (
 	defaultHeight = 24
-	chromeLines   = 4
-	pageStep      = 10
+	// listChrome is the fixed lines around the results: header, input, blank, status, hint bar.
+	listChrome = 5
+	// detailChrome is the fixed lines around the detail body: header, blank, status, hint bar.
+	detailChrome = 4
+	pageStep     = 10
+	searchTitle  = "search"
+	keyEsc       = "esc"
 )
 
 // pivot is one list on the stack: what it shows, the filter typed on it, and where the cursor was.
@@ -24,6 +29,7 @@ type pivot struct {
 	items  []index.Item
 	filter string
 	cursor int
+	home   bool
 }
 
 // Model is the Bubble Tea model. Build it with New.
@@ -35,25 +41,27 @@ type Model struct {
 	stack   []pivot
 	input   textinput.Model
 	shown   []index.Item
+	counts  [3]int
 	cursor  int
 	height  int
 	detail  bool
+	help    bool
 	scroll  int
 	status  string
 }
 
-// New returns a model that shows every item in idx. fetched is the cache's fetch time, shown in the header.
+// New returns a model that searches every item in idx. fetched is the cache's fetch time, shown in the header.
 func New(idx *index.Index, fetched time.Time) *Model {
 	all := idx.All()
 	in := textinput.New()
 	in.Prompt = "/ "
-	in.Placeholder = "type to filter"
+	in.Placeholder = "search roles, permissions and services"
 	in.Focus()
 	m := &Model{
 		idx:     idx,
 		fetched: fetched,
 		all:     all,
-		cur:     pivot{title: "all", items: all},
+		cur:     pivot{title: searchTitle, items: all, home: true},
 		input:   in,
 		height:  defaultHeight,
 	}
@@ -81,6 +89,12 @@ func (m *Model) key(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if s == "ctrl+c" {
 		return m, tea.Quit
 	}
+	if m.help {
+		if s == "?" || s == keyEsc {
+			m.help = false
+		}
+		return m, nil
+	}
 	if m.detail {
 		m.detailKey(s)
 		return m, nil
@@ -88,12 +102,14 @@ func (m *Model) key(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	m.status = ""
 
 	switch s {
+	case "?":
+		m.help = true
 	case "q":
 		if m.input.Value() == "" {
 			return m, tea.Quit
 		}
 		m.typeKey(k)
-	case "esc":
+	case keyEsc:
 		if len(m.stack) > 0 {
 			m.pop()
 		} else {
@@ -107,7 +123,7 @@ func (m *Model) key(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 	case "ctrl+o", "home":
 		m.stack = nil
-		m.cur = pivot{title: "all", items: m.all}
+		m.cur = pivot{title: searchTitle, items: m.all, home: true}
 		m.setFilter("")
 	case "enter":
 		if _, ok := m.selected(); ok {
@@ -145,8 +161,10 @@ func (m *Model) typeKey(k tea.KeyPressMsg) {
 
 func (m *Model) detailKey(s string) {
 	switch s {
-	case "esc", "backspace", "enter", "q":
+	case keyEsc, "backspace", "enter", "q":
 		m.detail = false
+	case "?":
+		m.help = true
 	case "up":
 		m.scroll--
 	case "down":
@@ -162,7 +180,7 @@ func (m *Model) detailKey(s string) {
 func (m *Model) pivotTo(want index.Kind, label string, look func(string) []index.Item) {
 	it, ok := m.selected()
 	if !ok || it.Kind != want {
-		m.status = fmt.Sprintf("select a %s first", kindLabel(want))
+		m.status = fmt.Sprintf("select a %s first", kindName(want))
 		return
 	}
 	m.push(label+it.Name, look(it.Name))
@@ -206,16 +224,49 @@ func (m *Model) moveCursor(d int) {
 	m.cursor += d
 }
 
-// refresh recomputes the visible rows from the current pivot and filter, and clamps the cursor.
+// refresh recomputes the visible items from the current list and filter, and clamps the cursor.
+// The start screen shows nothing until something is typed.
 func (m *Model) refresh() {
+	m.shown = nil
+	m.counts = [3]int{}
 	q := strings.ToLower(m.input.Value())
-	m.shown = m.shown[:0]
+	if m.cur.home && q == "" {
+		m.cursor = 0
+		return
+	}
 	for _, it := range m.cur.items {
-		if q == "" || strings.Contains(strings.ToLower(it.Name), q) {
-			m.shown = append(m.shown, it)
+		if q != "" && !m.matches(it, q) {
+			continue
 		}
+		m.shown = append(m.shown, it)
+		m.counts[it.Kind]++
 	}
 	m.cursor = min(max(m.cursor, 0), max(len(m.shown)-1, 0))
+}
+
+// matches reports whether q (already lowercased) appears in the item's name or, for roles, its title.
+func (m *Model) matches(it index.Item, q string) bool {
+	if strings.Contains(strings.ToLower(it.Name), q) {
+		return true
+	}
+	return strings.Contains(strings.ToLower(m.title(it)), q)
+}
+
+// title returns the human-readable name of a role, or "" for other kinds.
+func (m *Model) title(it index.Item) string {
+	if it.Kind != index.KindRole {
+		return ""
+	}
+	r, _ := m.idx.Role(it.Name)
+	return r.Title
+}
+
+// label is what a row shows: "Compute Admin [roles/compute.admin]" for roles, the ID otherwise.
+func (m *Model) label(it index.Item) string {
+	if t := m.title(it); t != "" {
+		return t + " [" + it.Name + "]"
+	}
+	return it.Name
 }
 
 func (m *Model) selected() (index.Item, bool) {
@@ -227,13 +278,16 @@ func (m *Model) selected() (index.Item, bool) {
 
 // View implements tea.Model.
 func (m *Model) View() tea.View {
-	var b strings.Builder
-	if m.detail {
-		b.WriteString(m.detailView())
-	} else {
-		b.WriteString(m.listView())
+	var body string
+	switch {
+	case m.help:
+		body = m.helpView()
+	case m.detail:
+		body = m.detailView()
+	default:
+		body = m.listView()
 	}
-	v := tea.NewView(b.String())
+	v := tea.NewView(body)
 	v.AltScreen = true
 	return v
 }
@@ -244,55 +298,105 @@ var (
 	dim     = lipgloss.NewStyle().Faint(true)
 )
 
+type row struct {
+	text string
+	idx  int // index into shown, or -1 for a section header
+}
+
+// rows lays out the visible items with a header before each kind.
+func (m *Model) rows() []row {
+	var out []row
+	for i, it := range m.shown {
+		if i == 0 || it.Kind != m.shown[i-1].Kind {
+			out = append(out, row{text: bold.Render(fmt.Sprintf("%s (%d)", kindTitle(it.Kind), m.counts[it.Kind])), idx: -1})
+		}
+		text := "  " + m.label(it)
+		if i == m.cursor {
+			text = reverse.Render("> " + m.label(it))
+		}
+		out = append(out, row{text: text, idx: i})
+	}
+	return out
+}
+
 func (m *Model) listView() string {
 	var b strings.Builder
 	header := fmt.Sprintf("permidex  %s  (%d)  data from %s", m.cur.title, len(m.shown), m.fetched.Format("2006-01-02"))
 	b.WriteString(bold.Render(header) + "\n")
 	b.WriteString(m.input.View() + "\n\n")
 
-	rows := max(m.height-chromeLines, 1)
-	start := min(max(m.cursor-rows/2, 0), max(len(m.shown)-rows, 0))
-	end := min(start+rows, len(m.shown))
-	if len(m.shown) == 0 {
+	switch {
+	case len(m.shown) == 0 && m.cur.home && m.input.Value() == "":
+		b.WriteString(dim.Render("type to search roles, permissions and services") + "\n")
+	case len(m.shown) == 0:
 		b.WriteString(dim.Render("no matches") + "\n")
-	}
-	for i := start; i < end; i++ {
-		it := m.shown[i]
-		line := fmt.Sprintf("%-8s %s", kindLabel(it.Kind), it.Name)
-		if i == m.cursor {
-			line = reverse.Render("> " + line)
-		} else {
-			line = "  " + line
+	default:
+		rows := m.rows()
+		visible := max(m.height-listChrome, 1)
+		cursorRow := 0
+		for i, r := range rows {
+			if r.idx == m.cursor {
+				cursorRow = i
+			}
 		}
-		b.WriteString(line + "\n")
+		start := min(max(cursorRow-visible/2, 0), max(len(rows)-visible, 0))
+		end := min(start+visible, len(rows))
+		for _, r := range rows[start:end] {
+			b.WriteString(r.text + "\n")
+		}
 	}
-
-	b.WriteString("\n")
-	if m.status != "" {
-		b.WriteString(m.status + "\n")
-	}
-	b.WriteString(dim.Render("enter detail  ctrl+r roles  ctrl+p perms  ctrl+s service  esc back  ctrl+o home  q quit"))
+	b.WriteString(m.footer())
 	return b.String()
 }
 
 func (m *Model) detailView() string {
 	it, ok := m.selected()
 	if !ok {
-		m.detail = false
-		return ""
+		return dim.Render("nothing selected") + "\n" + m.footer()
 	}
 	lines := m.detailLines(it)
-	rows := max(m.height-2, 1)
+	rows := max(m.height-detailChrome, 1)
 	m.scroll = min(max(m.scroll, 0), max(len(lines)-rows, 0))
 	end := min(m.scroll+rows, len(lines))
 
 	var b strings.Builder
-	b.WriteString(bold.Render(kindLabel(it.Kind)+" "+it.Name) + "\n\n")
+	b.WriteString(bold.Render(kindName(it.Kind)+" "+m.label(it)) + "\n\n")
 	for _, l := range lines[m.scroll:end] {
 		b.WriteString(l + "\n")
 	}
-	b.WriteString("\n" + dim.Render("esc back  up/down scroll"))
+	b.WriteString(m.footer())
 	return b.String()
+}
+
+func (m *Model) helpView() string {
+	var b strings.Builder
+	b.WriteString(bold.Render("keys") + "\n\n")
+	for _, l := range []string{
+		"type             search (roles match name or title)",
+		"up down pgup pgdn  move",
+		"enter            details",
+		"ctrl+r           roles granting the selected permission",
+		"ctrl+p           permissions in the selected role",
+		"ctrl+s           permissions in the selected service",
+		"esc              back (or clear the search)",
+		"backspace        delete, or back when the search is empty",
+		"ctrl+o, home     reset to the start",
+		"?                this help",
+		"q, ctrl+c        quit (q only when the search is empty)",
+	} {
+		b.WriteString("  " + l + "\n")
+	}
+	b.WriteString("\n" + dim.Render("? or esc close"))
+	return b.String()
+}
+
+// footer is the status line and the hint bar, always the last two lines on screen.
+func (m *Model) footer() string {
+	hint := "↑↓ move  enter details  esc back  ? help  q quit"
+	if m.detail {
+		hint = "↑↓ scroll  esc back  ? help"
+	}
+	return m.status + "\n" + dim.Render(hint)
 }
 
 func (m *Model) detailLines(it index.Item) []string {
@@ -303,31 +407,26 @@ func (m *Model) detailLines(it index.Item) []string {
 			return []string{"unknown role"}
 		}
 		perms := m.idx.PermissionsIn(it.Name)
-		return append(detailHead(
-			"title:       "+r.Title,
-			"stage:       "+r.Stage,
-			"description: "+r.Description,
+		return append([]string{
+			"title:       " + r.Title,
+			"stage:       " + r.Stage,
+			"description: " + r.Description,
 			"",
 			fmt.Sprintf("%d permissions:", len(r.IncludedPermissions)),
-		), names(perms)...)
+		}, names(perms)...)
 	case index.KindPermission:
-		svc := index.Service(it.Name)
 		roles := m.idx.RolesGranting(it.Name)
-		return append(detailHead(
-			"service: "+svc,
+		return append([]string{
+			"service: " + index.Service(it.Name),
 			"",
 			fmt.Sprintf("granted by %d roles:", len(roles)),
-		), names(roles)...)
+		}, names(roles)...)
 	default:
 		return []string{
 			fmt.Sprintf("%d permissions", len(m.idx.PermissionsOf(it.Name))),
 			fmt.Sprintf("%d roles", len(m.idx.RolesOf(it.Name))),
 		}
 	}
-}
-
-func detailHead(lines ...string) []string {
-	return lines
 }
 
 func names(items []index.Item) []string {
@@ -338,13 +437,24 @@ func names(items []index.Item) []string {
 	return out
 }
 
-func kindLabel(k index.Kind) string {
+func kindName(k index.Kind) string {
 	switch k {
 	case index.KindRole:
 		return "role"
 	case index.KindPermission:
-		return "perm"
+		return "permission"
 	default:
 		return "service"
+	}
+}
+
+func kindTitle(k index.Kind) string {
+	switch k {
+	case index.KindRole:
+		return "Roles"
+	case index.KindPermission:
+		return "Permissions"
+	default:
+		return "Services"
 	}
 }
