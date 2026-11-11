@@ -13,21 +13,23 @@ import (
 )
 
 const (
-	defaultHeight = 24
-	pageStep      = 10
-	homeCrumb     = "search"
-	keyEsc        = "esc"
-	hint          = "↑↓ move  → enter open  ← esc back  ? help  q quit"
+	defaultHeight   = 24
+	pageStep        = 10
+	homeCrumb       = "search"
+	homePlaceholder = "search roles, permissions and services"
+	keyEsc          = "esc"
+	hint            = "↑↓ move  → enter open  ← esc back  ? help  q quit"
 )
 
 // view is one screen: details about what it was opened from, a selectable list, and its own search.
 type view struct {
-	crumb  string
-	info   []string
-	items  []index.Item
-	filter string
-	cursor int
-	home   bool
+	crumb       string
+	placeholder string
+	info        []string
+	items       []index.Item
+	filter      string
+	cursor      int
+	home        bool
 }
 
 // Model is the Bubble Tea model. Build it with New.
@@ -48,7 +50,6 @@ type Model struct {
 func New(idx *index.Index, fetched time.Time) *Model {
 	in := textinput.New()
 	in.Prompt = "/ "
-	in.Placeholder = "search roles, permissions and services"
 	in.Focus()
 	m := &Model{
 		idx:     idx,
@@ -63,7 +64,7 @@ func New(idx *index.Index, fetched time.Time) *Model {
 }
 
 func (m *Model) homeView() view {
-	return view{crumb: homeCrumb, items: m.all, home: true}
+	return view{crumb: homeCrumb, placeholder: homePlaceholder, items: m.all, home: true}
 }
 
 // Init implements tea.Model.
@@ -166,10 +167,12 @@ func (m *Model) viewFor(it index.Item) view {
 			fmt.Sprintf("%d permissions", len(r.IncludedPermissions)),
 		}
 		v.items = m.idx.PermissionsIn(it.Name)
+		v.placeholder = "search permissions"
 	case index.KindPermission:
 		svc := index.Service(it.Name)
 		v.info = []string{"service: " + svc}
 		v.items = append([]index.Item{{Kind: index.KindService, Name: svc}}, m.idx.RolesGranting(it.Name)...)
+		v.placeholder = "search service and roles"
 	default:
 		perms := m.idx.PermissionsOf(it.Name)
 		roles := m.idx.RolesOf(it.Name)
@@ -178,6 +181,7 @@ func (m *Model) viewFor(it index.Item) view {
 			fmt.Sprintf("%d roles", len(roles)),
 		}
 		v.items = append(perms, roles...)
+		v.placeholder = "search permissions and roles"
 	}
 	return v
 }
@@ -212,6 +216,7 @@ func (m *Model) moveCursor(d int) {
 // refresh recomputes the visible items from the current view and search, and clamps the cursor.
 // The start screen shows nothing until something is typed.
 func (m *Model) refresh() {
+	m.input.Placeholder = m.cur.placeholder
 	m.shown = nil
 	m.counts = [3]int{}
 	q := strings.ToLower(m.input.Value())

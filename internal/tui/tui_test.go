@@ -264,3 +264,31 @@ func TestViewRendersStartAndRows(t *testing.T) {
 		t.Errorf("list view missing header or row:\n%s", out)
 	}
 }
+
+func TestSearchIsScopedToTheView(t *testing.T) {
+	m := testModel(t)
+	selectNamed(t, m, roleAdmin)
+	press(m, "right")
+	for _, c := range "delete" {
+		press(m, string(c))
+	}
+	if got := shownNames(m); !reflect.DeepEqual(got, []string{permDelete}) {
+		t.Errorf("role search = %v, want only its permissions matching", got)
+	}
+	press(m, "left")
+	if got := len(m.shown); got != len(m.all) {
+		t.Errorf("back should restore the home list (%d items), got %d", len(m.all), got)
+	}
+	if m.input.Placeholder != homePlaceholder {
+		t.Errorf("placeholder = %q, want the home one", m.input.Placeholder)
+	}
+}
+
+func TestPlaceholderNamesTheViewsSearch(t *testing.T) {
+	m := testModel(t)
+	selectNamed(t, m, roleAdmin)
+	press(m, "right")
+	if m.input.Placeholder != "search permissions" {
+		t.Errorf("role placeholder = %q", m.input.Placeholder)
+	}
+}
