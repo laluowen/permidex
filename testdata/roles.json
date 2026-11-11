@@ -1,0 +1,69 @@
+{
+  "roles": [
+    {
+      "name": "roles/accessapproval.admin",
+      "title": "Access Approval Admin",
+      "description": "Admin role for Access Approval",
+      "includedPermissions": [
+        "accessapproval.requests.approve",
+        "accessapproval.requests.dismiss",
+        "accessapproval.requests.get",
+        "accessapproval.requests.invalidate",
+        "accessapproval.requests.list",
+        "accessapproval.serviceAccounts.get",
+        "accessapproval.settings.delete",
+        "accessapproval.settings.get",
+        "accessapproval.settings.update",
+        "resourcemanager.projects.get",
+        "resourcemanager.projects.list"
+      ],
+      "stage": "GA",
+      "etag": "AA=="
+    },
+    {
+      "name": "roles/accessapproval.approver",
+      "title": "Access Approval Approver",
+      "description": "Ability to view or act on access approval requests and view configuration.",
+      "includedPermissions": [
+        "accessapproval.requests.approve",
+        "accessapproval.requests.dismiss",
+        "accessapproval.requests.get",
+        "accessapproval.requests.invalidate",
+        "accessapproval.requests.list",
+        "accessapproval.serviceAccounts.get",
+        "accessapproval.settings.get",
+        "resourcemanager.projects.get",
+        "resourcemanager.projects.list"
+      ],
+      "stage": "GA",
+      "etag": "AA=="
+    },
+    {
+      "name": "roles/accessapproval.configEditor",
+      "title": "Access Approval Config Editor",
+      "description": "Ability to update the Access Approval configuration.",
+      "includedPermissions": [
+        "accessapproval.serviceAccounts.get",
+        "accessapproval.settings.delete",
+        "accessapproval.settings.get",
+        "accessapproval.settings.update",
+        "resourcemanager.projects.get",
+        "resourcemanager.projects.list"
+      ],
+      "stage": "GA",
+      "etag": "AA=="
+    },
+    {
+      "name": "roles/compute.viewer",
+      "title": "Compute Viewer",
+      "description": "Read-only access to Compute Engine resources.",
+      "includedPermissions": [
+        "compute.instances.get",
+        "compute.instances.list",
+        "compute.projects.get"
+      ],
+      "stage": "GA",
+      "etag": "AA=="
+    }
+  ]
+}

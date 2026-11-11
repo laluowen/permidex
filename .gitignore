@@ -1,0 +1,11 @@
+# Binaries and test output
+/permidex
+*.test
+*.out
+coverage.*
+
+# local env
+.env
+
+# GoReleaser local output
+dist/
