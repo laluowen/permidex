@@ -303,7 +303,6 @@ func (m *Model) View() tea.View {
 // Colours are ANSI palette indices, so they follow the terminal's theme.
 var (
 	bold        = lipgloss.NewStyle().Bold(true)
-	reverse     = lipgloss.NewStyle().Reverse(true)
 	dim         = lipgloss.NewStyle().Faint(true)
 	titleStyle  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6"))
 	sectionSty  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("5"))
