@@ -41,6 +41,14 @@ func Service(perm string) string {
 	return svc
 }
 
+// ServiceFQDN returns the API hostname of a service, such as compute.googleapis.com.
+func ServiceFQDN(svc string) string {
+	if svc == "resourcemanager" {
+		return "cloudresourcemanager.googleapis.com"
+	}
+	return svc + ".googleapis.com"
+}
+
 // Build indexes roles. Input order does not matter; all results are sorted by name.
 func Build(roles []iam.Role) *Index {
 	x := &Index{

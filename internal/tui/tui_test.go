@@ -132,18 +132,15 @@ func TestDrillDownSelectionAndBack(t *testing.T) {
 	}
 }
 
-func TestBackspaceEditsSearchBeforeGoingBack(t *testing.T) {
+func TestBackspaceDeletesAndNeverGoesBack(t *testing.T) {
 	m := testModel(t)
 	selectNamed(t, m, roleAdmin)
 	press(m, "enter")
 	press(m, "g")
 	press(m, "backspace")
-	if len(m.stack) != 1 || m.input.Value() != "" {
-		t.Fatalf("backspace with text should delete, not go back (stack %d, search %q)", len(m.stack), m.input.Value())
-	}
 	press(m, "backspace")
-	if len(m.stack) != 0 {
-		t.Errorf("backspace on empty search should go back (stack %d)", len(m.stack))
+	if len(m.stack) != 1 || m.input.Value() != "" {
+		t.Errorf("backspace should only delete (stack %d, search %q)", len(m.stack), m.input.Value())
 	}
 }
 
@@ -300,5 +297,60 @@ func TestBreadcrumbDropsOldestCrumbs(t *testing.T) {
 	crumb := m.breadcrumb()
 	if !strings.HasPrefix(crumb, "… › ") || !strings.HasSuffix(crumb, permDelete) {
 		t.Errorf("breadcrumb = %q, want truncated from the left", crumb)
+	}
+}
+
+func TestTabSelectsAndOutputsYAML(t *testing.T) {
+	m := testModel(t)
+	selectNamed(t, m, "storage.objects.get")
+	press(m, "tab")
+	selectNamed(t, m, roleAdmin)
+	press(m, "tab")
+	selectNamed(t, m, "compute")
+	press(m, "tab")
+	press(m, "tab")
+	if len(m.picked) != 2 {
+		t.Fatalf("picked %d items, want 2 (tab toggles)", len(m.picked))
+	}
+	if got := m.Selection(); got != "" {
+		t.Errorf("Selection before ctrl+q = %q, want empty", got)
+	}
+	_, _ = m.Update(tea.KeyPressMsg{Code: 'q', Mod: tea.ModCtrl})
+	want := "roles:\n  - roles/compute.admin # Compute Admin\n"
+	if got := m.Selection(); !strings.HasPrefix(got, want) {
+		t.Errorf("Selection = %q, want prefix %q", got, want)
+	}
+}
+
+func TestSelectionCtrlQEmitsAndCtrlCAborts(t *testing.T) {
+	m := testModel(t)
+	selectNamed(t, m, roleAdmin)
+	press(m, "tab")
+	_, cmd := m.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
+	if cmd == nil || m.Selection() != "" {
+		t.Error("ctrl+c should quit with no output")
+	}
+}
+
+func TestJumpKeys(t *testing.T) {
+	m := testModel(t)
+	press(m, "ctrl+p")
+	if m.shown[m.cur.cursor].Kind != index.KindPermission {
+		t.Errorf("ctrl+p landed on %v", m.shown[m.cur.cursor])
+	}
+	press(m, "ctrl+s")
+	if m.shown[m.cur.cursor].Kind != index.KindService {
+		t.Errorf("ctrl+s landed on %v", m.shown[m.cur.cursor])
+	}
+	press(m, "ctrl+r")
+	if m.shown[m.cur.cursor].Kind != index.KindRole {
+		t.Errorf("ctrl+r landed on %v", m.shown[m.cur.cursor])
+	}
+}
+
+func TestServiceShownAsFQDN(t *testing.T) {
+	m := testModel(t)
+	if got := m.label(index.Item{Kind: index.KindService, Name: "compute"}); got != "compute.googleapis.com" {
+		t.Errorf("service label = %q", got)
 	}
 }

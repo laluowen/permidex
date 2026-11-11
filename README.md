@@ -38,11 +38,14 @@ Start with a blank screen and type to search roles (by ID or title), permissions
 | type | search the current list |
 | `enter` | open the selected item |
 | `esc` | back (clears the search first) |
-| `backspace` | delete a character, or back when the search is empty |
+| `backspace` | delete a character |
+| `tab` | select or deselect the item |
+| `ctrl+r`, `ctrl+s`, `ctrl+p` | jump to the roles, services or permissions section |
 | `↑` `↓` `pgup` `pgdn` | move |
 | `ctrl+o`, `home` | reset to the start screen |
 | `?` | key help (`?` or `esc` closes it) |
-| `ctrl+c` | quit |
+| `ctrl+q` | quit and print the selection to stdout as YAML |
+| `ctrl+c` | abort: quit and print nothing |
 
 ## Development
 

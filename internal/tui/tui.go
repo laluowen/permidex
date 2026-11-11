@@ -18,7 +18,7 @@ const (
 	homeCrumb       = "search"
 	homePlaceholder = "search roles, permissions and services"
 	keyEsc          = "esc"
-	hint            = "↑↓ move  enter open  esc back  ? help  ctrl+c quit"
+	hint            = "↑↓ move  enter open  esc back  tab select  ? help  ctrl+q done  ctrl+c abort"
 )
 
 // view is one screen: details about what it was opened from, a selectable list, and its own search.
@@ -45,6 +45,8 @@ type Model struct {
 	height  int
 	width   int
 	help    bool
+	picked  map[index.Item]bool
+	emit    bool
 }
 
 // New returns a model on the blank start screen. fetched is the cache's fetch time, shown in the header.
@@ -55,6 +57,7 @@ func New(idx *index.Index, fetched time.Time) *Model {
 	m := &Model{
 		idx:     idx,
 		fetched: fetched,
+		picked:  map[index.Item]bool{},
 		all:     idx.All(),
 		input:   in,
 		height:  defaultHeight,
@@ -89,6 +92,10 @@ func (m *Model) key(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if s == "ctrl+c" {
 		return m, tea.Quit
 	}
+	if s == "ctrl+q" && !m.help {
+		m.emit = true
+		return m, tea.Quit
+	}
 	if m.help {
 		if s == "?" || s == keyEsc {
 			m.help = false
@@ -105,12 +112,20 @@ func (m *Model) key(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		} else {
 			m.pop()
 		}
-	case "backspace":
-		if m.input.Value() == "" {
-			m.pop()
-		} else {
-			m.typeKey(k)
+	case "tab":
+		if it, ok := m.selected(); ok {
+			if m.picked[it] {
+				delete(m.picked, it)
+			} else {
+				m.picked[it] = true
+			}
 		}
+	case "ctrl+r":
+		m.jump(index.KindRole)
+	case "ctrl+s":
+		m.jump(index.KindService)
+	case "ctrl+p":
+		m.jump(index.KindPermission)
 	case "enter":
 		m.open()
 	case "ctrl+o", "home":
@@ -130,6 +145,16 @@ func (m *Model) key(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 	m.refresh()
 	return m, nil
+}
+
+// jump moves the cursor to the first item of kind in the current list.
+func (m *Model) jump(kind index.Kind) {
+	for i, it := range m.shown {
+		if it.Kind == kind {
+			m.cur.cursor = i
+			return
+		}
+	}
 }
 
 func (m *Model) typeKey(k tea.KeyPressMsg) {
@@ -165,7 +190,7 @@ func (m *Model) viewFor(it index.Item) view {
 		v.placeholder = "search permissions"
 	case index.KindPermission:
 		svc := index.Service(it.Name)
-		v.info = []string{"service: " + svc}
+		v.info = []string{"service: " + index.ServiceFQDN(svc)}
 		v.items = append([]index.Item{{Kind: index.KindService, Name: svc}}, m.idx.RolesGranting(it.Name)...)
 		v.placeholder = "search service and roles"
 	default:
@@ -251,6 +276,9 @@ func (m *Model) label(it index.Item) string {
 	if t := m.title(it); t != "" {
 		return t + " [" + it.Name + "]"
 	}
+	if it.Kind == index.KindService {
+		return index.ServiceFQDN(it.Name)
+	}
 	return it.Name
 }
 
@@ -290,9 +318,13 @@ func (m *Model) rows() []row {
 		if i == 0 || it.Kind != m.shown[i-1].Kind {
 			out = append(out, row{text: bold.Render(fmt.Sprintf("%s (%d)", kindTitle(it.Kind), m.counts[it.Kind])), idx: -1})
 		}
-		text := "  " + m.label(it)
+		mark := "[ ] "
+		if m.picked[it] {
+			mark = "[x] "
+		}
+		text := "  " + mark + m.label(it)
 		if i == m.cur.cursor {
-			text = reverse.Render("> " + m.label(it))
+			text = reverse.Render("> " + mark + m.label(it))
 		}
 		out = append(out, row{text: text, idx: i})
 	}
@@ -321,7 +353,7 @@ func (m *Model) breadcrumb() string {
 
 func (m *Model) listView() string {
 	var top []string
-	top = append(top, dim.Render("permidex  data from "+m.fetched.Format("2006-01-02")))
+	top = append(top, dim.Render(fmt.Sprintf("permidex  data from %s  selected %d", m.fetched.Format("2006-01-02"), len(m.picked))))
 	top = append(top, bold.Render(m.breadcrumb()))
 	top = append(top, m.cur.info...)
 	top = append(top, m.input.View(), "")
@@ -360,10 +392,13 @@ func (m *Model) helpView() string {
 		"up down pgup pgdn    move",
 		"enter                open the selected item",
 		"esc                  back (esc clears the search first)",
-		"backspace            delete, or back when the search is empty",
+		"backspace            delete",
+		"tab                  select or deselect the item",
+		"ctrl+r, ctrl+s, ctrl+p  jump to roles, services, permissions",
+		"ctrl+q               quit and print the selection as YAML",
 		"ctrl+o, home         reset to the start screen",
 		"?                    this help",
-		"ctrl+c               quit",
+		"ctrl+c               abort (print nothing)",
 	} {
 		b.WriteString("  " + l + "\n")
 	}

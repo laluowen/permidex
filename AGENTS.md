@@ -18,7 +18,7 @@ Terminal browser for GCP predefined IAM roles and permissions. One static Go bin
 
 ## Decisions
 
-- Navigation is drill-down: `enter` opens an item; `esc`, or `backspace` on an empty search, goes back. Arrow left/right are not bound, so the search text stays editable. Bare letters are search input, so there are no single-letter commands. `ctrl+c` is the only quit key.
+- Navigation is drill-down: `enter` opens an item; `esc` goes back (clears the search first). Arrow left/right and `backspace` do not navigate, so the search text stays editable. Bare letters and space are search input, so selection is `tab`. `ctrl+q` quits and prints the selection as YAML; `ctrl+c` aborts with no output.
 - Auth: ADC only. No `gcloud` binary at runtime.
 
 ## Commits

@@ -71,6 +71,12 @@ func browse() error {
 		return err
 	}
 	m := tui.New(index.Build(snap.Roles), snap.FetchedAt)
-	_, err = tea.NewProgram(m).Run()
-	return err
+	final, err := tea.NewProgram(m).Run()
+	if err != nil {
+		return err
+	}
+	if fm, ok := final.(*tui.Model); ok {
+		fmt.Print(fm.Selection())
+	}
+	return nil
 }
