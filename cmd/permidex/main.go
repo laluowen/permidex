@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/laluowen/permidex/v2/internal/browse"
@@ -29,7 +30,20 @@ func main() {
 	}
 }
 
+// providerFirst moves the first non-flag argument, the provider, to the front, so that both
+// `permidex gcp -r` and `permidex -r gcp` work.
+func providerFirst(args []string) []string {
+	for i, a := range args {
+		if !strings.HasPrefix(a, "-") {
+			out := append([]string{a}, args[:i]...)
+			return append(out, args[i+1:]...)
+		}
+	}
+	return args
+}
+
 func run(ctx context.Context, args []string) error {
+	args = providerFirst(args)
 	if len(args) == 0 {
 		fmt.Fprintln(os.Stderr, usage)
 		return errors.New("no provider given")
