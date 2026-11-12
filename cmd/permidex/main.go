@@ -18,8 +18,11 @@ import (
 
 const usage = `usage: permidex <provider> [--refresh|-r]
 
-  gcp    browse GCP predefined IAM roles and permissions
-  --refresh|-r     refresh that provider's cache from the cloud instead of browsing
+providers:
+  gcp           browse GCP predefined IAM roles and permissions
+
+options:
+  --refresh|-r  refresh that provider's cache from the cloud instead of browsing
 
 Run "permidex <provider> --refresh|-r" once before browsing.`
 
@@ -31,7 +34,7 @@ func main() {
 }
 
 // providerFirst moves the first non-flag argument, the provider, to the front, so that both
-// `permidex gcp --replace|-r` and `permidex --replace|-r gcp` work.
+// `permidex gcp --refresh|-r` and `permidex --refresh|-r gcp` work.
 func providerFirst(args []string) []string {
 	for i, a := range args {
 		if !strings.HasPrefix(a, "-") {
