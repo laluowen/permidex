@@ -3,10 +3,5 @@
   "release-type": "go",
   "include-component-in-tag": false,
   "draft": true,
-  "force-tag-creation": true,
-  "packages": {
-    ".": {
-      "release-as": "1.0.0"
-    }
-  }
+  "force-tag-creation": true
 }
