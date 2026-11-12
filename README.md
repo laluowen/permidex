@@ -42,6 +42,10 @@ permidex
 
 The cache is `$XDG_CACHE_HOME/permidex/roles.json`, or `~/.cache/permidex/roles.json`. `permidex` never fetches on its own.
 
+## Agents
+
+The cache is plain JSON, so agents and scripts can query it directly. [`skills/permidex`](./skills/permidex/SKILL.md) is an agent skill with `jq` recipes. The format is defined in [`schema/roles.schema.json`](./schema/roles.schema.json).
+
 ## Keys
 
 Start with a blank screen and type to search roles (by ID or title), permissions and services. Each result is selectable. Opening one shows its details and related items: a role lists its permissions; a permission shows its service and the roles that grant it; a service lists its permissions and roles.

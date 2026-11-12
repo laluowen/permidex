@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/laluowen/permidex/main/schema/roles.schema.json",
+  "title": "permidex roles cache",
+  "description": "The roles.json file written by `permidex refresh`: predefined GCP IAM roles and their permissions.",
+  "type": "object",
+  "required": ["version", "fetchedAt", "roles"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "const": 1,
+      "description": "Format version. Only version 1 is defined."
+    },
+    "fetchedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the roles were fetched from the IAM API, in UTC."
+    },
+    "roles": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/role" }
+    }
+  },
+  "$defs": {
+    "role": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^roles/.+",
+          "description": "Full role ID, such as roles/compute.admin."
+        },
+        "title": {
+          "type": "string",
+          "description": "Human-readable name, such as Compute Admin. Omitted when the API gives none."
+        },
+        "description": {
+          "type": "string",
+          "description": "What the role is for. Omitted when the API gives none."
+        },
+        "stage": {
+          "type": "string",
+          "description": "Launch stage, such as GA, BETA or ALPHA."
+        },
+        "includedPermissions": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9.]*\\.[a-zA-Z0-9.]+$" },
+          "description": "Permissions this role grants, such as compute.instances.get. Omitted when empty."
+        }
+      }
+    }
+  }
+}

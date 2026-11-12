@@ -18,9 +18,13 @@ var ErrMissing = errors.New("no cache")
 
 // Snapshot is the cache file content.
 type Snapshot struct {
+	Version   int        `json:"version"`
 	FetchedAt time.Time  `json:"fetchedAt"`
 	Roles     []iam.Role `json:"roles"`
 }
+
+// Version is the cache file format. Bump it, and update schema/roles.schema.json, on any change to the file.
+const Version = 1
 
 // Path returns $XDG_CACHE_HOME/permidex/roles.json, or ~/.cache/permidex/roles.json.
 func Path() (string, error) {
@@ -37,6 +41,7 @@ func Path() (string, error) {
 
 // Write replaces path atomically: it writes a temp file in the same directory, syncs it, then renames it.
 func Write(path string, s Snapshot) error {
+	s.Version = Version
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return fmt.Errorf("create cache dir: %w", err)
@@ -78,6 +83,9 @@ func Read(path string) (Snapshot, error) {
 	var s Snapshot
 	if err := json.Unmarshal(data, &s); err != nil {
 		return Snapshot{}, fmt.Errorf("decode %s: %w (run `permidex refresh`)", path, err)
+	}
+	if s.Version != Version {
+		return Snapshot{}, fmt.Errorf("cache %s is format version %d, want %d (run `permidex refresh`)", path, s.Version, Version)
 	}
 	return s, nil
 }

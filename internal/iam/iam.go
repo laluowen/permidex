@@ -30,10 +30,10 @@ const (
 // Role is a predefined role. IncludedPermissions is only set with view=FULL.
 type Role struct {
 	Name                string   `json:"name"`
-	Title               string   `json:"title"`
-	Description         string   `json:"description"`
-	Stage               string   `json:"stage"`
-	IncludedPermissions []string `json:"includedPermissions"`
+	Title               string   `json:"title,omitempty"`
+	Description         string   `json:"description,omitempty"`
+	Stage               string   `json:"stage,omitempty"`
+	IncludedPermissions []string `json:"includedPermissions,omitempty"`
 }
 
 // Doer is the part of *http.Client that Client uses, so tests can fake it.
