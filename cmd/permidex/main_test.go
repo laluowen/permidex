@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-const prov = prov
+const prov = "gcp"
 
 func TestProviderFirst(t *testing.T) {
 	tests := []struct {
