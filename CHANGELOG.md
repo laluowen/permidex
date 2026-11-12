@@ -1,5 +1,26 @@
 # Changelog
 
+## [2.0.0](https://github.com/laluowen/permidex/compare/v1.0.0...v2.0.0) (2026-11-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* `permidex` is now `permidex gcp`, and `permidex refresh` is `permidex gcp -r`. The cache moves from ~/.cache/permidex/roles.json to ~/.cache/permidex/gcp/roles.json, so run `permidex gcp -r` once. The module path is now github.com/laluowen/permidex/v2.
+
+### Features
+
+* browse providers through a shared browser; GCP is `permidex gcp` ([67f7b97](https://github.com/laluowen/permidex/commit/67f7b97da1c63b565a496fb1fb57e5ca08b0171e))
+* **cli:** accept the provider after flags too (permidex -r gcp) ([891a995](https://github.com/laluowen/permidex/commit/891a9950d70e61437c2b59301bed2a2289d57b2a))
+* **gcp:** write the schema beside the cache on refresh; validate output in tests ([1883682](https://github.com/laluowen/permidex/commit/18836827d6bb9d32ce4173f534e43b8d4db54c2e))
+* versioned roles cache with JSON schema and agent skill ([5fbb6d0](https://github.com/laluowen/permidex/commit/5fbb6d0172a59bdf7a68cb267c9426e08f94eba3))
+
+
+### Bug Fixes
+
+* **browse:** name sections next to jump keys in help and the bottom bar; review fixes ([989eeba](https://github.com/laluowen/permidex/commit/989eeba99dcf3fa3c8900ee04307cb1eef7f5575))
+* **browse:** section jump keys are ctrl+j, ctrl+k, ctrl+l ([5a41503](https://github.com/laluowen/permidex/commit/5a41503b61f57729dc931be4c0e6289fe4b2b7b8))
+* **cli:** fix the test constant that broke the build ([f90a287](https://github.com/laluowen/permidex/commit/f90a287bc51ebf97bce106e7b01711b6890e41cb))
+
 ## 1.0.0 (2026-11-12)
 
 
