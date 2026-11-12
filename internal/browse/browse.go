@@ -318,14 +318,20 @@ func (m *Model) jumpHints() []keyHint {
 	return out
 }
 
-var listHints = []keyHint{
-	{"↑↓ pgup pgdn", "move"},
-	{"home end", "top or bottom"},
-	{keyEnter, "open"},
-	{"esc", "back"},
-	{keyTab, "select"},
-	{"ctrl+o", "start screen"},
-	{keyCtrlQ, "done"},
+// footerHints is the bottom bar, in display order: movement, open, back, select, the section jumps,
+// the start screen, then quit.
+func (m *Model) footerHints() []keyHint {
+	hints := []keyHint{
+		{"↑↓ pgup pgdn home end", "move"},
+		{keyEnter, "open"},
+		{"esc", "back"},
+		{keyTab, "select"},
+	}
+	hints = append(hints, m.jumpHints()...)
+	return append(hints,
+		keyHint{"ctrl+o", "start screen"},
+		keyHint{keyCtrlQ, "done"},
+	)
 }
 
 type row struct {
@@ -378,7 +384,7 @@ func (m *Model) listView() string {
 	if width <= 0 {
 		width = 80
 	}
-	bar := hintLines(append(m.jumpHints(), listHints...), width)
+	bar := hintLines(m.footerHints(), width)
 	var top []string
 	top = append(top, titleStyle.Render("permidex "+m.src.Name())+dim.Render(fmt.Sprintf("  data from %s  selected %d", m.src.FetchedAt().Format(time.DateOnly), len(m.picked))))
 	top = append(top, bold.Render(m.breadcrumb()))

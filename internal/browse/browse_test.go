@@ -302,7 +302,7 @@ func TestFooterListsEveryKeyAndNoHelpScreen(t *testing.T) {
 	m := newModel()
 	m.width = 200
 	out := plainView(m)
-	for _, want := range []string{"↑↓ pgup pgdn move", "home end top or bottom", "ctrl+o start screen", "ctrl+q done", "ctrl+j Things"} {
+	for _, want := range []string{"↑↓ pgup pgdn home end move", "enter open", "esc back", "tab select", "ctrl+j Things", "ctrl+o start screen", "ctrl+q done"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("footer missing %q:\n%s", want, out)
 		}
