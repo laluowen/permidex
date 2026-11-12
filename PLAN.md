@@ -33,11 +33,11 @@ Assumed: no quota project is needed. Confirm in step 2.
 
 ### Cache
 
-- Path: `$XDG_CACHE_HOME/permidex/roles.json`, falling back to `~/.cache/permidex/roles.json`.
-- Written by `permidex refresh`, read by the TUI.
+- Path: `$XDG_CACHE_HOME/permidex/gcp/roles.json`, falling back to `~/.cache/permidex/gcp/roles.json`. Each provider has its own directory.
+- Written by `permidex gcp --refresh|-r`, read by `permidex gcp`. The file has a `version`; a mismatch is refused with a refresh hint.
 - Write to a temp file, then rename (atomic).
 - Store the fetch time. The TUI shows "data from <date>" in the header.
-- Missing cache: the TUI exits with "run `permidex refresh`". It does not fetch on its own.
+- Missing cache: the browser exits with "run `permidex gcp --refresh|-r`". It does not fetch on its own.
 
 ### Derived in memory
 
@@ -53,18 +53,18 @@ Not in the MVP. A `go:embed` snapshot plus a nightly CI refresh would make the b
 
 ## 4. Architecture
 
-Module: `github.com/laluowen/permidex`.
+Module: `github.com/laluowen/permidex/v2`. The v2 path is required by Go for v2+ tags.
 
 ```
-cmd/permidex/        main: subcommands `refresh` and default TUI
-internal/iam/       fetch (paged roles.list, ADC token), types
-internal/cache/     read/write roles.json atomically, staleness
-internal/index/     reverse index, service grouping, search list
-internal/tui/       bubbletea model: list, search, pivot stack, detail view
+cmd/permidex/        main: `permidex <provider>` browses, `--refresh|-r` refreshes that provider's cache
+internal/browse/     shared bubbletea browser: search, sections, drill-down, selection, YAML output. Knows nothing about providers
+internal/gcp/        GCP provider: cache file, refresh, and the browse.Source implementation
+internal/iam/        GCP fetch: paged roles.list, ADC client
+internal/index/      GCP reverse index, service grouping, search list
+internal/cache/      generic JSON cache files (atomic write, read, path)
 ```
 
-- `internal/iam` depends on an interface for the HTTP client so tests use a fake server (`httptest`). No live GCP calls in tests.
-- `internal/tui` depends on `index`, not on `iam`.
+- `internal/browse` depends on the `browse.Source` interface only, not on any provider.
 - Keep the Bubble Tea model in one file to start. Split only when it hurts.
 
 ## 5. TUI
@@ -84,7 +84,7 @@ Built with Bubble Tea, `bubbles/list` or `bubbles/textinput` for search, lipglos
 | `?` | key help |
 | `ctrl+c` | quit |
 
-Navigation is drill-down: every result is selectable, and opening it shows its related items. `ctrl+r`, `ctrl+p` and `ctrl+s` only jump the cursor to a section.
+Navigation is drill-down: every result is selectable, and opening it shows its related items. `ctrl+j`, `ctrl+k` and `ctrl+l` jump the cursor to the first, second or third section. The same keys work for every provider.
 
 ### Pivot stack
 
@@ -124,10 +124,10 @@ Releases: GoReleaser. Ship darwin and linux, amd64 and arm64.
 1. `go mod init`, `mise.toml`, `.golangci.yaml`, `.gitignore`.
 2. Manual check: one `curl` with a token from `gcloud auth application-default print-access-token`. Confirm the response shape and `includedPermissions`. Save a small `testdata/roles.json`.
 3. `internal/iam` fetch, paged, with fake-server tests.
-4. `internal/cache` and `permidex refresh`.
+4. `internal/cache` and `permidex gcp --refresh|-r`.
 5. `internal/index` with tests.
-6. `internal/tui`: list, search, detail, pivots, back stack.
-7. README: install, `permidex refresh`, keys.
+6. `internal/browse`: list, search, detail, pivots, back stack.
+7. README: install, `permidex gcp --refresh|-r`, keys.
 
 ## 10. v1.1.0: fuzzy search
 
@@ -142,8 +142,8 @@ Goal: type loosely (`cmpadm` → `roles/compute.admin`) and still get sensible r
 
 ### Steps
 
-1. Add a scoring function (new `internal/match` package, or a small file in `internal/tui`). No dependency; `github.com/sahilm/fuzzy` is the fallback if the scoring gets hard to own.
-2. Wire it into `refresh()` in `internal/tui/tui.go`, replacing the substring filter.
+1. Add a scoring function (new `internal/match` package, or a small file in `internal/browse`). No dependency; `github.com/sahilm/fuzzy` is the fallback if the scoring gets hard to own.
+2. Wire it into `refresh()` in `internal/browse/browse.go`, replacing the substring filter.
 3. Tests: table of query → expected top results; substring beats subsequence; empty query keeps the original order.
 4. Measure per-keystroke filter time on the real cache (2429 roles plus their permissions and services). Only add an index if it is slow.
 5. Tune the ranking on real queries, then update the README keys section if the behavior needs describing.

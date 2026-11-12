@@ -6,72 +6,68 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
-	"time"
-
-	"github.com/laluowen/permidex/internal/iam"
 )
 
+type doc struct {
+	Name  string   `json:"name"`
+	Items []string `json:"items"`
+}
+
 func TestWriteReadRoundTrip(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "sub", "roles.json")
-	want := Snapshot{
-		FetchedAt: time.Date(2026, 11, 11, 9, 30, 0, 0, time.UTC),
-		Roles: []iam.Role{{
-			Name:                "roles/compute.viewer",
-			Title:               "Compute Viewer",
-			Stage:               "GA",
-			IncludedPermissions: []string{"compute.instances.get"},
-		}},
+	path := filepath.Join(t.TempDir(), "sub", "doc.json")
+	want := doc{Name: "x", Items: []string{"a", "b"}}
+	if err := WriteJSON(path, want); err != nil {
+		t.Fatalf("WriteJSON: %v", err)
 	}
-	if err := Write(path, want); err != nil {
-		t.Fatalf("Write: %v", err)
+	var got doc
+	if err := ReadJSON(path, &got); err != nil {
+		t.Fatalf("ReadJSON: %v", err)
 	}
-	got, err := Read(path)
-	if err != nil {
-		t.Fatalf("Read: %v", err)
-	}
-	if !got.FetchedAt.Equal(want.FetchedAt) || !reflect.DeepEqual(got.Roles, want.Roles) {
-		t.Errorf("Read = %+v, want %+v", got, want)
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("ReadJSON = %+v, want %+v", got, want)
 	}
 }
 
 func TestWriteReplacesAndLeavesNoTempFiles(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "roles.json")
-	if err := Write(path, Snapshot{Roles: []iam.Role{{Name: "roles/old"}}}); err != nil {
+	path := filepath.Join(dir, "doc.json")
+	if err := WriteJSON(path, doc{Name: "old"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := Write(path, Snapshot{Roles: []iam.Role{{Name: "roles/new"}}}); err != nil {
+	if err := WriteJSON(path, doc{Name: "new"}); err != nil {
 		t.Fatal(err)
 	}
-	got, err := Read(path)
-	if err != nil {
+	var got doc
+	if err := ReadJSON(path, &got); err != nil {
 		t.Fatal(err)
 	}
-	if len(got.Roles) != 1 || got.Roles[0].Name != "roles/new" {
-		t.Errorf("after replace: %+v", got.Roles)
+	if got.Name != "new" {
+		t.Errorf("after replace: %+v", got)
 	}
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(entries) != 1 {
-		t.Errorf("dir has %d entries, want only roles.json", len(entries))
+		t.Errorf("dir has %d entries, want only doc.json", len(entries))
 	}
 }
 
 func TestReadMissing(t *testing.T) {
-	_, err := Read(filepath.Join(t.TempDir(), "roles.json"))
+	var got doc
+	err := ReadJSON(filepath.Join(t.TempDir(), "doc.json"), &got)
 	if !errors.Is(err, ErrMissing) {
 		t.Fatalf("err = %v, want ErrMissing", err)
 	}
 }
 
 func TestReadCorrupt(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "roles.json")
+	path := filepath.Join(t.TempDir(), "doc.json")
 	if err := os.WriteFile(path, []byte("{not json"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	_, err := Read(path)
+	var got doc
+	err := ReadJSON(path, &got)
 	if err == nil || errors.Is(err, ErrMissing) {
 		t.Fatalf("err = %v, want decode error", err)
 	}
@@ -79,11 +75,11 @@ func TestReadCorrupt(t *testing.T) {
 
 func TestPathUsesXDGCacheHome(t *testing.T) {
 	t.Setenv("XDG_CACHE_HOME", "/xdg")
-	got, err := Path()
+	got, err := Path("gcp", "roles.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := "/xdg/permidex/roles.json"; got != want {
+	if want := "/xdg/permidex/gcp/roles.json"; got != want {
 		t.Errorf("Path = %q, want %q", got, want)
 	}
 }

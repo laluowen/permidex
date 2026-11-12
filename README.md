@@ -7,7 +7,7 @@ Browse GCP predefined IAM roles and permissions in the terminal. Find which role
 Build from source (Go 1.27+):
 
 ```sh
-go install github.com/laluowen/permidex/cmd/permidex@latest
+go install github.com/laluowen/permidex/v2/cmd/permidex@latest
 ```
 
 Or download a release archive for darwin or linux (amd64, arm64) and put `permidex` on your `PATH`.
@@ -23,7 +23,7 @@ mise use -g github:laluowen/permidex@1.0.0   # or pin this exact version
 ```
 <!-- x-release-please-end -->
 
-Then run `permidex`. By default mise holds releases back for 24 hours (`minimum_release_age`), so `@latest` only picks a release up a day after it's published.
+Then run `permidex gcp`. By default mise holds releases back for 24 hours (`minimum_release_age`), so `@latest` only picks a release up a day after it's published.
 
 ## Use
 
@@ -36,11 +36,17 @@ gcloud auth application-default login
 Fetch the roles into the cache, then browse:
 
 ```sh
-permidex refresh
-permidex
+permidex gcp --refresh|-r   # refresh the cache from GCP
+permidex gcp                # browse it
 ```
 
-The cache is `$XDG_CACHE_HOME/permidex/roles.json`, or `~/.cache/permidex/roles.json`. `permidex` never fetches on its own.
+The cache is `$XDG_CACHE_HOME/permidex/gcp/roles.json`, or `~/.cache/permidex/gcp/roles.json`. Each refresh also writes `gcp-roles.schema.json` into the same directory, so the cache describes itself. Browsing never fetches on its own.
+
+Upgrading from 1.x: the command is now `permidex gcp`, and `permidex refresh` is `permidex gcp --refresh|-r`. The cache moved to `gcp/roles.json`, so run `permidex gcp --refresh|-r` once.
+
+## Agents
+
+The cache is plain JSON, so agents and scripts can query it directly. [`skills/permidex-gcp`](./skills/permidex-gcp/SKILL.md) is an agent skill with `jq` recipes. The format is defined in [`schema/gcp-roles.schema.json`](./schema/gcp-roles.schema.json).
 
 ## Keys
 
@@ -53,11 +59,11 @@ Start with a blank screen and type to search roles (by ID or title), permissions
 | `esc` | back (clears the search first) |
 | `backspace` | delete a character |
 | `tab` | select or deselect the item |
-| `ctrl+r`, `ctrl+s`, `ctrl+p` | jump to the roles, services or permissions section |
+| `ctrl+j`, `ctrl+k`, `ctrl+l` | jump to the first, second or third section (for GCP: roles, permissions, services) |
 | `↑` `↓` `pgup` `pgdn` | move |
 | `ctrl+o`, `home` | reset to the start screen |
 | `?` | key help (`?` or `esc` closes it) |
-| `ctrl+q` | quit and print the selection to stdout as YAML |
+| `ctrl+q` | quit and print the selection to stdout as YAML (the TUI draws on stderr) |
 | `ctrl+c` | abort: quit and print nothing |
 
 ## Development

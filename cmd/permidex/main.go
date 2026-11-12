@@ -1,19 +1,30 @@
-// Command permidex browses GCP predefined IAM roles and permissions.
+// Command permidex browses cloud IAM roles and permissions offline, from a local cache.
 package main
 
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
+	"io"
 	"os"
-	"time"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/laluowen/permidex/internal/cache"
-	"github.com/laluowen/permidex/internal/iam"
-	"github.com/laluowen/permidex/internal/index"
-	"github.com/laluowen/permidex/internal/tui"
+	"github.com/laluowen/permidex/v2/internal/browse"
+	"github.com/laluowen/permidex/v2/internal/cache"
+	"github.com/laluowen/permidex/v2/internal/gcp"
 )
+
+const usage = `usage: permidex <provider> [--refresh|-r]
+
+providers:
+  gcp           browse GCP predefined IAM roles and permissions
+
+options:
+  --refresh|-r  refresh that provider's cache from the cloud instead of browsing
+
+Run "permidex <provider> --refresh|-r" once before browsing.`
 
 func main() {
 	if err := run(context.Background(), os.Args[1:]); err != nil {
@@ -22,61 +33,80 @@ func main() {
 	}
 }
 
+// providerFirst moves the first non-flag argument, the provider, to the front, so that both
+// `permidex gcp --refresh|-r` and `permidex --refresh|-r gcp` work.
+func providerFirst(args []string) []string {
+	for i, a := range args {
+		if !strings.HasPrefix(a, "-") {
+			out := append([]string{a}, args[:i]...)
+			return append(out, args[i+1:]...)
+		}
+	}
+	return args
+}
+
 func run(ctx context.Context, args []string) error {
+	args = providerFirst(args)
 	if len(args) == 0 {
-		return browse()
+		fmt.Fprintln(os.Stderr, usage)
+		return errors.New("no provider given")
 	}
 	switch args[0] {
-	case "refresh":
-		return refresh(ctx)
 	case "help", "-h", "--help":
-		fmt.Println("usage: permidex [refresh]\n\n  (no args)  browse the cached roles\n  refresh    fetch roles from GCP into the cache")
+		fmt.Println(usage)
 		return nil
+	case "gcp":
+		return gcpCmd(ctx, args[1:])
 	default:
-		return fmt.Errorf("unknown command %q (try `permidex help`)", args[0])
+		return fmt.Errorf("unknown provider %q (try `permidex help`)", args[0])
 	}
 }
 
-func refresh(ctx context.Context) error {
-	path, err := cache.Path()
+func gcpCmd(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("permidex gcp", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	var refresh bool
+	fs.BoolVar(&refresh, "r", false, "refresh the cache from GCP")
+	fs.BoolVar(&refresh, "refresh", false, "refresh the cache from GCP")
+	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			fmt.Println(usage)
+			return nil
+		}
+		return fmt.Errorf("%w (see `permidex help`)", err)
+	}
+	if fs.NArg() > 0 {
+		return fmt.Errorf("unexpected argument %q (see `permidex help`)", fs.Arg(0))
+	}
+	path, err := gcp.CachePath()
 	if err != nil {
 		return err
 	}
-	hc, err := iam.NewADCClient(ctx)
-	if err != nil {
-		return err
+	if refresh {
+		n, err := gcp.Refresh(ctx, path, os.Stderr)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("wrote %d roles to %s\n", n, path)
+		return nil
 	}
-	roles, err := iam.Client{HTTP: hc}.Roles(ctx)
-	if err != nil {
-		return err
-	}
-	snap := cache.Snapshot{FetchedAt: time.Now().UTC(), Roles: roles}
-	if err := cache.Write(path, snap); err != nil {
-		return err
-	}
-	fmt.Printf("wrote %d roles to %s\n", len(roles), path)
-	return nil
-}
-
-func browse() error {
-	path, err := cache.Path()
-	if err != nil {
-		return err
-	}
-	snap, err := cache.Read(path)
+	snap, err := gcp.Load(path)
 	if errors.Is(err, cache.ErrMissing) {
-		return fmt.Errorf("no cache at %s: run `permidex refresh`", path)
+		return fmt.Errorf("no cache at %s: run `permidex gcp --refresh|-r`", path)
 	}
 	if err != nil {
 		return err
 	}
-	m := tui.New(index.Build(snap.Roles), snap.FetchedAt)
-	final, err := tea.NewProgram(m, tea.WithOutput(os.Stderr)).Run()
+	return browseSource(gcp.NewSource(snap))
+}
+
+func browseSource(src browse.Source) error {
+	final, err := tea.NewProgram(browse.New(src), tea.WithOutput(os.Stderr)).Run()
 	if err != nil {
 		return err
 	}
-	if fm, ok := final.(*tui.Model); ok {
-		fmt.Print(fm.Selection())
+	if m, ok := final.(*browse.Model); ok {
+		fmt.Print(m.Selection())
 	}
 	return nil
 }

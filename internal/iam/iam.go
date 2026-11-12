@@ -30,10 +30,10 @@ const (
 // Role is a predefined role. IncludedPermissions is only set with view=FULL.
 type Role struct {
 	Name                string   `json:"name"`
-	Title               string   `json:"title"`
-	Description         string   `json:"description"`
-	Stage               string   `json:"stage"`
-	IncludedPermissions []string `json:"includedPermissions"`
+	Title               string   `json:"title,omitempty"`
+	Description         string   `json:"description,omitempty"`
+	Stage               string   `json:"stage,omitempty"`
+	IncludedPermissions []string `json:"includedPermissions,omitempty"`
 }
 
 // Doer is the part of *http.Client that Client uses, so tests can fake it.
@@ -42,10 +42,12 @@ type Doer interface {
 }
 
 // Client lists roles. HTTP must send authorized requests (see NewADCClient).
-// URL is the roles.list endpoint; empty means DefaultURL.
+// URL is the roles.list endpoint; empty means DefaultURL. OnPage, if set, is called after each page
+// with the page count and the roles fetched so far.
 type Client struct {
-	HTTP Doer
-	URL  string
+	HTTP   Doer
+	URL    string
+	OnPage func(pages, roles int)
 }
 
 // NewADCClient returns an *http.Client that authorizes with Application Default Credentials.
@@ -68,12 +70,15 @@ func (c Client) Roles(ctx context.Context) ([]Role, error) {
 	var roles []Role
 	var token string
 	seen := map[string]bool{}
-	for {
+	for pages := 1; ; pages++ {
 		page, err := c.page(ctx, base, token)
 		if err != nil {
 			return nil, err
 		}
 		roles = append(roles, page.Roles...)
+		if c.OnPage != nil {
+			c.OnPage(pages, len(roles))
+		}
 		if page.NextPageToken == "" {
 			return roles, nil
 		}
