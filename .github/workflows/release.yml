@@ -1,0 +1,125 @@
+name: Release
+
+# Runs after CI succeeds on main (so a release PR is never opened, and a release
+# never cut, from a commit that has not passed test/lint), or by hand from the
+# Actions tab (run it on main).
+#
+# Manual runs:
+# - no input: same as the automatic run. release-please opens or updates the
+#   release PR, or cuts the release if the release PR was merged.
+# - `tag` set: skip release-please and run only GoReleaser against that tag's
+#   existing draft release. Use it to retry after a failed GoReleaser job.
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing draft release tag to build and publish (skips release-please). Leave empty for a normal run."
+        required: false
+        type: string
+
+# Nothing by default: each job asks only for what it needs.
+permissions: {}
+
+jobs:
+  release-please:
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      inputs.tag == '' &&
+      (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # open/update the release PR, create the tag + GitHub Release
+      issues: write # label and comment on related issues
+      pull-requests: write # open/update the release PR
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      # Maintains a standing "chore(main): release X.Y.Z" PR from the
+      # Conventional Commits merged since the last release. Merging it cuts the
+      # release. It creates a DRAFT release and pushes the tag at once
+      # (release-please-config.json: "draft", "force-tag-creation"). The
+      # goreleaser job below attaches every asset to the draft, then publishes
+      # it.
+      - name: release-please
+        id: release
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  goreleaser:
+    needs: release-please
+    # release-please is skipped when `tag` is given, so don't require it to have run.
+    if: >-
+      !cancelled() && !failure() && github.ref == 'refs/heads/main' &&
+      (inputs.tag != '' || needs.release-please.outputs.release_created == 'true')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # attach assets to the GitHub Release
+      id-token: write # keyless signing (cosign) and attestations: the job's OIDC token
+      attestations: write # store build provenance attestations
+      actions: read # verify CI for the tagged commit
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Check out the tag explicitly, not the branch tip: it gives
+          # GoReleaser `{{ .Tag }}` and `{{ .Version }}` to build.
+          ref: ${{ inputs.tag || needs.release-please.outputs.tag_name }}
+          fetch-depth: 0
+
+      - name: Verify CI for release commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          release_sha="$(git rev-parse HEAD)"
+          deadline=$((SECONDS + 600))
+          while (( SECONDS < deadline )); do
+            runs="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs?head_sha=${release_sha}&per_page=100")"
+            if jq -e --arg sha "$release_sha" '
+              any(.workflow_runs[];
+                .head_sha == $sha and
+                .event == "push" and
+                .head_branch == "main" and
+                .status == "completed" and
+                .conclusion == "success"
+              )
+            ' <<< "$runs" > /dev/null; then
+              echo "CI passed for release commit ${release_sha}"
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "No successful CI run found for release commit ${release_sha}" >&2
+          exit 1
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      # cosign signs checksums.txt keylessly, and Syft writes each archive's
+      # SBOM from its build hook (see `signs` and `builds.hooks` in
+      # .goreleaser.yaml). Both must be on PATH before GoReleaser runs.
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      - uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+
+      # Builds linux/darwin x amd64/arm64, packs each into an archive with its
+      # SBOM and LICENSE.md, writes and signs checksums, uploads everything to
+      # the draft release, then publishes it (`release.use_existing_draft` +
+      # `draft: false`). If it fails before that, the draft is still unsealed:
+      # re-run the failed job, or run this workflow by hand with `tag` set.
+      - uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
+        with:
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # SLSA build provenance for every archive in checksums.txt, verifiable
+      # with `gh attestation verify`.
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-checksums: ./dist/checksums.txt
