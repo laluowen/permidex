@@ -87,6 +87,8 @@ var keys = map[string]tea.KeyPressMsg{
 	"up":        {Code: tea.KeyUp},
 	"down":      {Code: tea.KeyDown},
 	"tab":       {Code: tea.KeyTab},
+	"home":      {Code: tea.KeyHome},
+	"end":       {Code: tea.KeyEnd},
 	"ctrl+j":    {Code: 'j', Mod: tea.ModCtrl},
 	"ctrl+k":    {Code: 'k', Mod: tea.ModCtrl},
 	"ctrl+o":    {Code: 'o', Mod: tea.ModCtrl},
@@ -276,20 +278,37 @@ func TestCtrlCAbortsWithNoOutput(t *testing.T) {
 	}
 }
 
-func TestHelpToggle(t *testing.T) {
+func TestQuestionMarkTypesIntoSearch(t *testing.T) {
 	m := newModel()
 	press(m, "?")
+	if m.input.Value() != "?" {
+		t.Errorf("? should type into the search, got %q", m.input.Value())
+	}
+}
+
+func TestHomeAndEndJumpToTopAndBottom(t *testing.T) {
+	m := newModel()
+	press(m, "end")
+	if m.cur.cursor != len(m.shown)-1 {
+		t.Errorf("end cursor = %d, want %d", m.cur.cursor, len(m.shown)-1)
+	}
+	press(m, "home")
+	if m.cur.cursor != 0 {
+		t.Errorf("home cursor = %d, want 0", m.cur.cursor)
+	}
+}
+
+func TestFooterListsEveryKeyAndNoHelpScreen(t *testing.T) {
+	m := newModel()
+	m.width = 200
 	out := plainView(m)
-	if !m.help || !strings.Contains(out, "ctrl+j") || !strings.Contains(out, "jump to Things") || !strings.Contains(out, "jump to Parts") {
-		t.Fatal("? should open the help overlay with the jump keys")
+	for _, want := range []string{"↑↓ pgup pgdn move", "home end top or bottom", "ctrl+o start screen", "ctrl+q done", "ctrl+j Things"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("footer missing %q:\n%s", want, out)
+		}
 	}
-	press(m, "down")
-	if !m.help {
-		t.Error("other keys should not close help")
-	}
-	press(m, "esc")
-	if m.help {
-		t.Error("esc should close help")
+	if strings.Contains(out, "? help") || strings.Contains(out, "ctrl+c") {
+		t.Errorf("footer should not show ? or ctrl+c:\n%s", out)
 	}
 }
 
