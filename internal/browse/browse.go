@@ -3,7 +3,6 @@ package browse
 import (
 	"fmt"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
@@ -110,10 +109,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// jumpKey is the key that jumps to section i: ctrl+1 for the first, and so on.
-func jumpKey(i int) string {
-	return "ctrl+" + strconv.Itoa(i+1)
-}
+// jumpKeys jump to the first, second and third section. The same keys apply to every provider.
+var jumpKeys = []string{"ctrl+j", "ctrl+k", "ctrl+l"}
 
 func (m *Model) key(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	s := k.String()
@@ -132,7 +129,7 @@ func (m *Model) key(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 
 	for i, sec := range m.sections {
-		if s == jumpKey(i) {
+		if i < len(jumpKeys) && s == jumpKeys[i] {
 			m.jump(sec.Kind)
 			m.refresh()
 			return m, nil
@@ -315,7 +312,6 @@ var listHints = []keyHint{
 }
 
 func (m *Model) helpHints() []keyHint {
-	last := jumpKey(len(m.sections) - 1)
 	return []keyHint{
 		{"type", "search (matches name or title)"},
 		{"↑↓ pgup pgdn", "move"},
@@ -323,7 +319,7 @@ func (m *Model) helpHints() []keyHint {
 		{"esc", "back (esc clears the search first)"},
 		{"backspace", "delete"},
 		{keyTab, "select or deselect the item"},
-		{"ctrl+1.." + strings.TrimPrefix(last, "ctrl+"), "jump to a section, in the order listed"},
+		{strings.Join(jumpKeys[:min(len(m.sections), len(jumpKeys))], " "), "jump to a section, in the order listed"},
 		{keyCtrlQ, "quit and print the selection as YAML"},
 		{"ctrl+o home", "reset to the start screen"},
 		{"?", "this help"},

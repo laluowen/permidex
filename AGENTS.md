@@ -21,7 +21,7 @@ Terminal browser for GCP predefined IAM roles and permissions. One static Go bin
 
 ## Decisions
 
-- Navigation is drill-down: `enter` opens an item; `esc` goes back (clears the search first). Arrow left/right and `backspace` do not navigate, so the search text stays editable. Bare letters and space are search input, so selection is `tab`. `ctrl+1`..`ctrl+N` jump to a section. `ctrl+q` quits and prints the selection as YAML; `ctrl+c` aborts with no output.
+- Navigation is drill-down: `enter` opens an item; `esc` goes back (clears the search first). Arrow left/right and `backspace` do not navigate, so the search text stays editable. Bare letters and space are search input, so selection is `tab`. `ctrl+j`, `ctrl+k`, `ctrl+l` jump to the first three sections, the same for every provider. `ctrl+q` quits and prints the selection as YAML; `ctrl+c` aborts with no output.
 - Providers implement `browse.Source`. Keep provider knowledge (roles, permissions, services, policies, the names of kinds) out of `internal/browse`.
 - GCP services are the first dot-segment of a permission (`compute`), shown and written to the YAML as-is. GCP exposes no permission-to-service mapping and the roles API has no service field, so there is no FQDN (`*.googleapis.com`): deriving it would guess. Don't add FQDN mapping or per-service exceptions.
 - Auth: ADC only. No `gcloud` binary at runtime.

@@ -84,7 +84,7 @@ Built with Bubble Tea, `bubbles/list` or `bubbles/textinput` for search, lipglos
 | `?` | key help |
 | `ctrl+c` | quit |
 
-Navigation is drill-down: every result is selectable, and opening it shows its related items. `ctrl+1`, `ctrl+2` and `ctrl+3` jump the cursor to the first, second or third section.
+Navigation is drill-down: every result is selectable, and opening it shows its related items. `ctrl+j`, `ctrl+k` and `ctrl+l` jump the cursor to the first, second or third section. The same keys work for every provider.
 
 ### Pivot stack
 

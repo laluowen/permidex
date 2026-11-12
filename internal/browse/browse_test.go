@@ -87,8 +87,8 @@ var keys = map[string]tea.KeyPressMsg{
 	"up":        {Code: tea.KeyUp},
 	"down":      {Code: tea.KeyDown},
 	"tab":       {Code: tea.KeyTab},
-	"ctrl+1":    {Code: '1', Mod: tea.ModCtrl},
-	"ctrl+2":    {Code: '2', Mod: tea.ModCtrl},
+	"ctrl+j":    {Code: 'j', Mod: tea.ModCtrl},
+	"ctrl+k":    {Code: 'k', Mod: tea.ModCtrl},
 	"ctrl+o":    {Code: 'o', Mod: tea.ModCtrl},
 	"ctrl+q":    {Code: 'q', Mod: tea.ModCtrl},
 	"ctrl+c":    {Code: 'c', Mod: tea.ModCtrl},
@@ -218,13 +218,13 @@ func TestSearchIsScopedToTheView(t *testing.T) {
 
 func TestJumpKeysMoveToSection(t *testing.T) {
 	m := newModel()
-	press(m, "ctrl+2")
+	press(m, "ctrl+k")
 	if m.shown[m.cur.cursor].Kind != kindPart {
-		t.Errorf("ctrl+2 landed on %v", m.shown[m.cur.cursor])
+		t.Errorf("ctrl+k landed on %v", m.shown[m.cur.cursor])
 	}
-	press(m, "ctrl+1")
+	press(m, "ctrl+j")
 	if m.shown[m.cur.cursor].Kind != kindThing {
-		t.Errorf("ctrl+1 landed on %v", m.shown[m.cur.cursor])
+		t.Errorf("ctrl+j landed on %v", m.shown[m.cur.cursor])
 	}
 }
 
@@ -279,7 +279,7 @@ func TestCtrlCAbortsWithNoOutput(t *testing.T) {
 func TestHelpToggle(t *testing.T) {
 	m := newModel()
 	press(m, "?")
-	if !m.help || !strings.Contains(plainView(m), "ctrl+1..2") {
+	if !m.help || !strings.Contains(plainView(m), "ctrl+j ctrl+k") {
 		t.Fatal("? should open the help overlay with the jump keys")
 	}
 	press(m, "down")

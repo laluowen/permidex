@@ -59,7 +59,7 @@ Start with a blank screen and type to search roles (by ID or title), permissions
 | `esc` | back (clears the search first) |
 | `backspace` | delete a character |
 | `tab` | select or deselect the item |
-| `ctrl+1`, `ctrl+2`, `ctrl+3` | jump to the first, second or third section (roles, permissions, services) |
+| `ctrl+j`, `ctrl+k`, `ctrl+l` | jump to the first, second or third section (for GCP: roles, permissions, services) |
 | `↑` `↓` `pgup` `pgdn` | move |
 | `ctrl+o`, `home` | reset to the start screen |
 | `?` | key help (`?` or `esc` closes it) |
