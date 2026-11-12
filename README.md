@@ -19,7 +19,7 @@ Or download a release archive for darwin or linux (amd64, arm64) and put `permid
 <!-- x-release-please-start-version -->
 ```sh
 mise use -g github:laluowen/permidex@latest  # the newest release
-mise use -g github:laluowen/permidex@1.0.0   # or pin this exact version
+mise use -g github:laluowen/permidex@2.0.0   # or pin this exact version
 ```
 <!-- x-release-please-end -->
 
