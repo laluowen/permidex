@@ -26,23 +26,30 @@ func Path(parts ...string) (string, error) {
 	return filepath.Join(append([]string{dir, "permidex"}, parts...)...), nil
 }
 
-// WriteJSON replaces path atomically: it writes a temp file in the same directory, syncs it, then renames it.
+// WriteJSON replaces path atomically with v encoded as indented JSON.
 func WriteJSON(path string, v any) error {
+	data, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return fmt.Errorf("encode cache: %w", err)
+	}
+	return WriteFile(path, append(data, '\n'))
+}
+
+// WriteFile replaces path atomically: it writes a temp file in the same directory, syncs it, then renames it.
+func WriteFile(path string, data []byte) error {
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return fmt.Errorf("create cache dir: %w", err)
 	}
-	tmp, err := os.CreateTemp(dir, ".cache-*.json")
+	tmp, err := os.CreateTemp(dir, ".cache-*.tmp")
 	if err != nil {
 		return fmt.Errorf("create temp file: %w", err)
 	}
 	defer func() { _ = os.Remove(tmp.Name()) }()
 
-	enc := json.NewEncoder(tmp)
-	enc.SetIndent("", "  ")
-	if err := enc.Encode(v); err != nil {
+	if _, err := tmp.Write(data); err != nil {
 		_ = tmp.Close()
-		return fmt.Errorf("encode cache: %w", err)
+		return fmt.Errorf("write cache: %w", err)
 	}
 	if err := tmp.Sync(); err != nil {
 		_ = tmp.Close()

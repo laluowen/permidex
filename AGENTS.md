@@ -10,7 +10,7 @@ Terminal browser for GCP predefined IAM roles and permissions. One static Go bin
 - `internal/iam`: paged `roles.list` (`view=FULL`) over an authorized `*http.Client`; `NewADCClient` builds one from ADC.
 - `internal/index`: GCP reverse lookups and service grouping, built once in memory.
 - `internal/cache`: generic JSON cache files under `~/.cache/permidex` (atomic write, read, path).
-- `schema/gcp-roles.schema.json`: the GCP cache format. `internal/gcp` tests check it against the structs.
+- `schema/`: the GCP cache schema, `gcp-roles.schema.json`, embedded as the `schema` package. Each refresh writes it beside the cache. Tests validate real output against it (`santhosh-tekuri/jsonschema`) and check its property names against the structs.
 - `skills/permidex-gcp`: agent skill for querying the GCP cache.
 - `testdata/roles.json`: real `roles.list` output (4 roles). Tests use it.
 

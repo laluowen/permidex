@@ -1,6 +1,7 @@
 package gcp
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"os"
@@ -14,9 +15,12 @@ import (
 	"github.com/laluowen/permidex/v2/internal/browse"
 	"github.com/laluowen/permidex/v2/internal/cache"
 	"github.com/laluowen/permidex/v2/internal/iam"
+	"github.com/laluowen/permidex/v2/schema"
+	jsonschema "github.com/santhosh-tekuri/jsonschema/v6"
 )
 
 const (
+	roleAB     = "roles/a.b"
 	roleViewer = "roles/compute.viewer"
 	permGet    = "compute.instances.get"
 )
@@ -131,7 +135,7 @@ func TestLoadRoundTrip(t *testing.T) {
 	want := Snapshot{
 		Version:   CacheVersion,
 		FetchedAt: time.Date(2026, 11, 11, 9, 30, 0, 0, time.UTC),
-		Roles:     []iam.Role{{Name: "roles/a.b", IncludedPermissions: []string{"a.b.c"}}},
+		Roles:     []iam.Role{{Name: roleAB, IncludedPermissions: []string{"a.b.c"}}},
 	}
 	if err := cache.WriteJSON(path, want); err != nil {
 		t.Fatal(err)
@@ -168,7 +172,7 @@ func TestSchemaMatchesStructs(t *testing.T) {
 		Version:   CacheVersion,
 		FetchedAt: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
 		Roles: []iam.Role{{
-			Name: "roles/a.b", Title: "T", Description: "D", Stage: "GA", IncludedPermissions: []string{"a.b.c"},
+			Name: roleAB, Title: "T", Description: "D", Stage: "GA", IncludedPermissions: []string{"a.b.c"},
 		}},
 	}
 	raw, err := json.Marshal(full)
@@ -204,5 +208,94 @@ func assertKeys(t *testing.T, what string, got, want []string) {
 	t.Helper()
 	if !slices.Equal(got, want) {
 		t.Errorf("%s keys = %v, schema has %v", what, got, want)
+	}
+}
+
+func TestSaveWritesSchemaBesideCache(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "gcp", "roles.json")
+	if err := Save(path, Snapshot{FetchedAt: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), Roles: []iam.Role{{Name: roleAB}}}); err != nil {
+		t.Fatal(err)
+	}
+	snap, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if snap.Version != CacheVersion {
+		t.Errorf("saved version = %d, want %d", snap.Version, CacheVersion)
+	}
+	got, err := os.ReadFile(filepath.Join(filepath.Dir(path), SchemaFile))
+	if err != nil {
+		t.Fatalf("schema not written beside the cache: %v", err)
+	}
+	if !bytes.Equal(got, schema.GCPRoles) {
+		t.Error("schema beside the cache differs from the embedded schema")
+	}
+}
+
+// validate reports whether doc, marshalled as JSON, passes the embedded GCP schema.
+func validate(t *testing.T, doc any) error {
+	t.Helper()
+	raw, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(raw))
+	if err != nil {
+		t.Fatal(err)
+	}
+	schemaDoc, err := jsonschema.UnmarshalJSON(bytes.NewReader(schema.GCPRoles))
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := jsonschema.NewCompiler()
+	if err := c.AddResource("gcp-roles.schema.json", schemaDoc); err != nil {
+		t.Fatal(err)
+	}
+	s, err := c.Compile("gcp-roles.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return s.Validate(inst)
+}
+
+func TestSchemaValidatesRealOutput(t *testing.T) {
+	data, err := os.ReadFile("../../testdata/roles.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var f struct {
+		Roles []iam.Role `json:"roles"`
+	}
+	if err := json.Unmarshal(data, &f); err != nil {
+		t.Fatal(err)
+	}
+	snap := Snapshot{
+		Version:   CacheVersion,
+		FetchedAt: time.Date(2026, 11, 11, 0, 0, 0, 0, time.UTC),
+		Roles:     append(f.Roles, iam.Role{Name: "roles/bare.role"}),
+	}
+	if err := validate(t, snap); err != nil {
+		t.Errorf("real output fails the schema: %v", err)
+	}
+}
+
+func TestSchemaRejectsBadOutput(t *testing.T) {
+	base := func() Snapshot {
+		return Snapshot{Version: CacheVersion, FetchedAt: time.Now().UTC(), Roles: []iam.Role{{Name: roleAB}}}
+	}
+	bad := base()
+	bad.Roles[0].Name = "not-a-role"
+	if err := validate(t, bad); err == nil {
+		t.Error("role name without roles/ prefix should fail")
+	}
+	bad = base()
+	bad.Roles[0].IncludedPermissions = []string{"Not A Permission"}
+	if err := validate(t, bad); err == nil {
+		t.Error("malformed permission should fail")
+	}
+	bad = base()
+	bad.Version = CacheVersion + 1
+	if err := validate(t, bad); err == nil {
+		t.Error("wrong version should fail")
 	}
 }

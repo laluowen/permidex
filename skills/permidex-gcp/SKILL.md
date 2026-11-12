@@ -11,7 +11,7 @@ description: Look up GCP predefined IAM roles and their permissions offline, fro
 
 `${XDG_CACHE_HOME:-$HOME/.cache}/permidex/gcp/roles.json`
 
-Its format is defined in `schema/gcp-roles.schema.json` in the permidex repository. It has `version` (currently `1`), `fetchedAt`, and `roles[]`. Each role has `name` (such as `roles/compute.admin`), and may have `title`, `description`, `stage` and `includedPermissions`. Empty fields are omitted.
+Its format is defined in `gcp-roles.schema.json`, which sits in the same directory. The same schema is in the permidex repository at `schema/gcp-roles.schema.json`. It has `version` (currently `1`), `fetchedAt`, and `roles[]`. Each role has `name` (such as `roles/compute.admin`), and may have `title`, `description`, `stage` and `includedPermissions`. Empty fields are omitted.
 
 The file is about 10 MB. Query it with `jq`. Don't read it whole.
 

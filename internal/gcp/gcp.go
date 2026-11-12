@@ -6,12 +6,14 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"path/filepath"
 	"time"
 
 	"github.com/laluowen/permidex/v2/internal/browse"
 	"github.com/laluowen/permidex/v2/internal/cache"
 	"github.com/laluowen/permidex/v2/internal/iam"
 	"github.com/laluowen/permidex/v2/internal/index"
+	"github.com/laluowen/permidex/v2/schema"
 )
 
 // CacheVersion is the format of the GCP cache file. Bump it, and update schema/gcp-roles.schema.json, on any change.
@@ -48,7 +50,7 @@ func Load(path string) (Snapshot, error) {
 	return s, nil
 }
 
-// Refresh fetches every predefined role from IAM and writes the cache at path. Progress lines go to progress.
+// Refresh fetches every predefined role from IAM and saves the cache at path. Progress lines go to progress.
 // It returns the number of roles written.
 func Refresh(ctx context.Context, path string, progress io.Writer) (int, error) {
 	hc, err := iam.NewADCClient(ctx)
@@ -65,11 +67,23 @@ func Refresh(ctx context.Context, path string, progress io.Writer) (int, error) 
 	if err != nil {
 		return 0, err
 	}
-	snap := Snapshot{Version: CacheVersion, FetchedAt: time.Now().UTC(), Roles: roles}
-	if err := cache.WriteJSON(path, snap); err != nil {
+	if err := Save(path, Snapshot{Version: CacheVersion, FetchedAt: time.Now().UTC(), Roles: roles}); err != nil {
 		return 0, err
 	}
 	return len(roles), nil
+}
+
+// SchemaFile is the name of the schema written beside the GCP cache.
+const SchemaFile = "gcp-roles.schema.json"
+
+// Save writes the snapshot to path, and the matching schema beside it, so the cache directory is
+// self-describing.
+func Save(path string, snap Snapshot) error {
+	snap.Version = CacheVersion
+	if err := cache.WriteJSON(path, snap); err != nil {
+		return err
+	}
+	return cache.WriteFile(filepath.Join(filepath.Dir(path), SchemaFile), schema.GCPRoles)
 }
 
 // Source is the GCP catalogue, for browse.
