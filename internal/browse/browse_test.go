@@ -279,7 +279,8 @@ func TestCtrlCAbortsWithNoOutput(t *testing.T) {
 func TestHelpToggle(t *testing.T) {
 	m := newModel()
 	press(m, "?")
-	if !m.help || !strings.Contains(plainView(m), "ctrl+j ctrl+k") {
+	out := plainView(m)
+	if !m.help || !strings.Contains(out, "ctrl+j") || !strings.Contains(out, "jump to Things") || !strings.Contains(out, "jump to Parts") {
 		t.Fatal("? should open the help overlay with the jump keys")
 	}
 	press(m, "down")
@@ -314,5 +315,26 @@ func TestBreadcrumbDropsOldestCrumbs(t *testing.T) {
 	crumb := m.breadcrumb()
 	if !strings.HasPrefix(crumb, "… › ") || !strings.HasSuffix(crumb, partAlpha) {
 		t.Errorf("breadcrumb = %q, want truncated from the left", crumb)
+	}
+}
+
+func TestBottomBarShowsJumpKeysAndSectionNames(t *testing.T) {
+	m := newModel()
+	m.width = 200
+	out := plainView(m)
+	if !strings.Contains(out, "ctrl+j Things") || !strings.Contains(out, "ctrl+k Parts") {
+		t.Errorf("bar should name each jump key's section:\n%s", out)
+	}
+}
+
+func TestBottomBarWrapsOnNarrowTerminal(t *testing.T) {
+	m := newModel()
+	m.height = 40
+	m.width = 40
+	wide := newModel()
+	wide.height = 40
+	wide.width = 200
+	if strings.Count(plainView(m), "\n") <= strings.Count(plainView(wide), "\n") {
+		t.Errorf("narrow bar should take more lines than the wide one")
 	}
 }

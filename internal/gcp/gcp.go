@@ -83,7 +83,11 @@ func Save(path string, snap Snapshot) error {
 	if err := cache.WriteJSON(path, snap); err != nil {
 		return err
 	}
-	return cache.WriteFile(filepath.Join(filepath.Dir(path), SchemaFile), schema.GCPRoles)
+	schemaPath := filepath.Join(filepath.Dir(path), SchemaFile)
+	if err := cache.WriteFile(schemaPath, schema.GCPRoles); err != nil {
+		return fmt.Errorf("cache saved to %s, but writing %s failed: %w", path, schemaPath, err)
+	}
+	return nil
 }
 
 // Source is the GCP catalogue, for browse.

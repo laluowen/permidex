@@ -6,6 +6,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 
 	tea "charm.land/bubbletea/v2"
@@ -46,11 +47,19 @@ func run(ctx context.Context, args []string) error {
 
 func gcpCmd(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("permidex gcp", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
 	var refresh bool
 	fs.BoolVar(&refresh, "r", false, "refresh the cache from GCP")
 	fs.BoolVar(&refresh, "refresh", false, "refresh the cache from GCP")
 	if err := fs.Parse(args); err != nil {
-		return err
+		if errors.Is(err, flag.ErrHelp) {
+			fmt.Println(usage)
+			return nil
+		}
+		return fmt.Errorf("%w (see `permidex help`)", err)
+	}
+	if fs.NArg() > 0 {
+		return fmt.Errorf("unexpected argument %q (see `permidex help`)", fs.Arg(0))
 	}
 	path, err := gcp.CachePath()
 	if err != nil {

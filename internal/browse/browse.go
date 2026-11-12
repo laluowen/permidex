@@ -292,13 +292,39 @@ type keyHint struct {
 	key, desc string
 }
 
-// hintBar renders key hints as "key desc", with the keys in their own colour.
-func hintBar(hints []keyHint) string {
-	parts := make([]string, len(hints))
-	for i, h := range hints {
-		parts[i] = keyStyle.Render(h.key) + " " + dim.Render(h.desc)
+// hintLines renders key hints as "key desc" with the keys in their own colour, wrapping onto as many
+// lines as width needs.
+func hintLines(hints []keyHint, width int) []string {
+	var lines []string
+	line := ""
+	for _, h := range hints {
+		part := keyStyle.Render(h.key) + " " + dim.Render(h.desc)
+		switch {
+		case line == "":
+			line = part
+		case lipgloss.Width(line+"  "+part) <= width:
+			line += "  " + part
+		default:
+			lines = append(lines, line)
+			line = part
+		}
 	}
-	return strings.Join(parts, "  ")
+	if line != "" {
+		lines = append(lines, line)
+	}
+	return lines
+}
+
+// jumpHints pairs each jump key with the section it jumps to, in the order listed.
+func (m *Model) jumpHints() []keyHint {
+	var out []keyHint
+	for i, sec := range m.sections {
+		if i >= len(jumpKeys) {
+			break
+		}
+		out = append(out, keyHint{key: jumpKeys[i], desc: sec.Title})
+	}
+	return out
 }
 
 var listHints = []keyHint{
@@ -312,19 +338,23 @@ var listHints = []keyHint{
 }
 
 func (m *Model) helpHints() []keyHint {
-	return []keyHint{
+	hints := []keyHint{
 		{"type", "search (matches name or title)"},
 		{"↑↓ pgup pgdn", "move"},
 		{keyEnter, "open the selected item"},
 		{"esc", "back (esc clears the search first)"},
 		{"backspace", "delete"},
 		{keyTab, "select or deselect the item"},
-		{strings.Join(jumpKeys[:min(len(m.sections), len(jumpKeys))], " "), "jump to a section, in the order listed"},
-		{keyCtrlQ, "quit and print the selection as YAML"},
-		{"ctrl+o home", "reset to the start screen"},
-		{"?", "this help"},
-		{keyCtrlC, "abort (print nothing)"},
 	}
+	for _, j := range m.jumpHints() {
+		hints = append(hints, keyHint{key: j.key, desc: "jump to " + j.desc})
+	}
+	return append(hints,
+		keyHint{keyCtrlQ, "quit and print the selection as YAML"},
+		keyHint{"ctrl+o home", "reset to the start screen"},
+		keyHint{"?", "this help"},
+		keyHint{keyCtrlC, "abort (print nothing)"},
+	)
 }
 
 type row struct {
@@ -373,6 +403,11 @@ func (m *Model) breadcrumb() string {
 }
 
 func (m *Model) listView() string {
+	width := m.width
+	if width <= 0 {
+		width = 80
+	}
+	bar := hintLines(append(m.jumpHints(), listHints...), width)
 	var top []string
 	top = append(top, titleStyle.Render("permidex "+m.src.Name())+dim.Render(fmt.Sprintf("  data from %s  selected %d", m.src.FetchedAt().Format(time.DateOnly), len(m.picked))))
 	top = append(top, bold.Render(m.breadcrumb()))
@@ -389,7 +424,7 @@ func (m *Model) listView() string {
 		body = append(body, dim.Render("nothing here"))
 	default:
 		rows := m.rows()
-		visible := max(m.height-len(top)-1, 1)
+		visible := max(m.height-len(top)-len(bar), 1)
 		cursorRow := 0
 		for i, r := range rows {
 			if r.idx == m.cur.cursor {
@@ -402,7 +437,7 @@ func (m *Model) listView() string {
 			body = append(body, r.text)
 		}
 	}
-	return strings.Join(append(append(top, body...), hintBar(listHints)), "\n")
+	return strings.Join(append(append(top, body...), bar...), "\n")
 }
 
 func (m *Model) helpView() string {
