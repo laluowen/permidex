@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"time"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -22,6 +23,8 @@ const (
 	scope      = "https://www.googleapis.com/auth/cloud-platform"
 	pageSize   = 1000
 	maxErrBody = 1 << 10
+	// requestTimeout bounds each roles.list page request, so a stalled connection cannot hang refresh.
+	requestTimeout = 30 * time.Second
 )
 
 // Role is a predefined role. IncludedPermissions is only set with view=FULL.
@@ -51,7 +54,9 @@ func NewADCClient(ctx context.Context) (*http.Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("application default credentials: %w (run `gcloud auth application-default login`)", err)
 	}
-	return oauth2.NewClient(ctx, creds.TokenSource), nil
+	hc := oauth2.NewClient(ctx, creds.TokenSource)
+	hc.Timeout = requestTimeout
+	return hc, nil
 }
 
 // Roles returns every predefined role with its permissions, following all pages.
@@ -62,6 +67,7 @@ func (c Client) Roles(ctx context.Context) ([]Role, error) {
 	}
 	var roles []Role
 	var token string
+	seen := map[string]bool{}
 	for {
 		page, err := c.page(ctx, base, token)
 		if err != nil {
@@ -71,9 +77,10 @@ func (c Client) Roles(ctx context.Context) ([]Role, error) {
 		if page.NextPageToken == "" {
 			return roles, nil
 		}
-		if page.NextPageToken == token {
-			return nil, fmt.Errorf("roles.list: page token %q repeated", token)
+		if seen[page.NextPageToken] {
+			return nil, fmt.Errorf("roles.list: page token %q repeated", page.NextPageToken)
 		}
+		seen[page.NextPageToken] = true
 		token = page.NextPageToken
 	}
 }

@@ -53,7 +53,7 @@ Not in the MVP. A `go:embed` snapshot plus a nightly CI refresh would make the b
 
 ## 4. Architecture
 
-Module: `github.com/lalu-uk/permidex`.
+Module: `github.com/laluowen/permidex`.
 
 ```
 cmd/permidex/        main: subcommands `refresh` and default TUI
@@ -77,14 +77,14 @@ Built with Bubble Tea, `bubbles/list` or `bubbles/textinput` for search, lipglos
 |---|---|
 | type | fuzzy filter over the current list |
 | `enter` | detail for the selected item |
-| `ctrl+r` | pivot: roles for a permission |
-| `ctrl+p` | pivot: permissions in a role |
-| `ctrl+s` | pivot: permissions under a service |
-| `esc`, or `backspace` on an empty filter | pop the pivot stack (back) |
-| `ctrl+o` or `home` | reset to the full index |
-| `q` (empty filter only) / `ctrl+c` | quit |
+| `enter` | open the selected item (drill-down view) |
+| `esc` | back (clears the search first) |
+| `backspace` | delete |
+| `ctrl+o` or `home` | reset to the start screen |
+| `?` | key help |
+| `ctrl+c` | quit |
 
-Pivots use `ctrl+` because bare `r`/`p`/`s` are filter input. Decided in the first build.
+Navigation is drill-down: every result is selectable, and opening it shows its related items. `ctrl+r`, `ctrl+p` and `ctrl+s` only jump the cursor to a section.
 
 ### Pivot stack
 
@@ -112,7 +112,7 @@ Every pivot pushes the previous list and filter onto a stack. `esc` pops. This f
 - `github:golangci/golangci-lint`: pinned exact
 - `github:goreleaser/goreleaser` or `aqua:` only if no `github:` source works
 
-Releases: GoReleaser, draft then publish (lalu-uk org rules: immutable releases, actions pinned by SHA). Ship darwin and linux, amd64 and arm64.
+Releases: GoReleaser. Ship darwin and linux, amd64 and arm64.
 
 ## 8. Open questions
 
@@ -128,3 +128,32 @@ Releases: GoReleaser, draft then publish (lalu-uk org rules: immutable releases,
 5. `internal/index` with tests.
 6. `internal/tui`: list, search, detail, pivots, back stack.
 7. README: install, `permidex refresh`, keys.
+
+## 10. v1.1.0: fuzzy search
+
+Goal: type loosely (`cmpadm` → `roles/compute.admin`) and still get sensible results, with exact substring matches always ranked first.
+
+### Behavior
+
+1. Exact substring matches first, shortest name first.
+2. Then subsequence matches, scored by tight gaps and word-boundary hits (`.`, `/`).
+3. Within a tier, keep the current stable order.
+4. Match on name only. Title matching is out of scope for v1.1.0.
+
+### Steps
+
+1. Add a scoring function (new `internal/match` package, or a small file in `internal/tui`). No dependency; `github.com/sahilm/fuzzy` is the fallback if the scoring gets hard to own.
+2. Wire it into `refresh()` in `internal/tui/tui.go`, replacing the substring filter.
+3. Tests: table of query → expected top results; substring beats subsequence; empty query keeps the original order.
+4. Measure per-keystroke filter time on the real cache (2429 roles plus their permissions and services). Only add an index if it is slow.
+5. Tune the ranking on real queries, then update the README keys section if the behavior needs describing.
+
+### Done when
+
+- `go test -race ./...` and `golangci-lint run` pass.
+- Real-cache queries feel right on a manual run.
+- Tagged v1.1.0 via the release flow.
+
+### Services (decision)
+
+GCP's roles API has no service field and no permission-to-service mapping, so a service is only the first dot-segment of a permission name (`compute`). It is browsable and selectable as a convenience and written to the YAML as-is. It is not an API hostname, so no `.googleapis.com` FQDN is derived.

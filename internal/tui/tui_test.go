@@ -2,31 +2,43 @@ package tui
 
 import (
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/lalu-uk/permidex/internal/iam"
-	"github.com/lalu-uk/permidex/internal/index"
+	"github.com/laluowen/permidex/internal/iam"
+	"github.com/laluowen/permidex/internal/index"
 )
+
+const (
+	permGet    = "compute.instances.get"
+	permDelete = "compute.instances.delete"
+	roleAdmin  = "roles/compute.admin"
+	svcCompute = "compute"
+)
+
+var ansiPattern = regexp.MustCompile("\x1b\\[[0-9;]*m")
 
 func testModel(t *testing.T) *Model {
 	t.Helper()
 	idx := index.Build([]iam.Role{
 		{Name: "roles/compute.viewer", Title: "Compute Viewer", IncludedPermissions: []string{permGet, "compute.instances.list"}},
-		{Name: "roles/compute.admin", Title: "Compute Admin", IncludedPermissions: []string{permGet, "compute.instances.delete"}},
+		{Name: roleAdmin, Title: "Compute Admin", IncludedPermissions: []string{permGet, permDelete}},
 		{Name: "roles/storage.viewer", Title: "Storage Viewer", IncludedPermissions: []string{"storage.objects.get"}},
 	})
 	m := New(idx, time.Date(2026, 11, 11, 0, 0, 0, 0, time.UTC))
 	m.height = 40
+	showAll(m)
 	return m
 }
 
-const (
-	permGet = "compute.instances.get"
-	allView = "all"
-)
+// showAll leaves the blank start screen so every item is listed.
+func showAll(m *Model) {
+	m.cur.home = false
+	m.refresh()
+}
 
 var keys = map[string]tea.KeyPressMsg{
 	"esc":       {Code: tea.KeyEscape},
@@ -34,9 +46,6 @@ var keys = map[string]tea.KeyPressMsg{
 	"backspace": {Code: tea.KeyBackspace},
 	"up":        {Code: tea.KeyUp},
 	"down":      {Code: tea.KeyDown},
-	"ctrl+r":    {Code: 'r', Mod: tea.ModCtrl},
-	"ctrl+p":    {Code: 'p', Mod: tea.ModCtrl},
-	"ctrl+s":    {Code: 's', Mod: tea.ModCtrl},
 	"ctrl+o":    {Code: 'o', Mod: tea.ModCtrl},
 }
 
@@ -48,20 +57,11 @@ func press(m *Model, s string) {
 	_, _ = m.Update(k)
 }
 
-func selectedName(t *testing.T, m *Model) string {
-	t.Helper()
-	it, ok := m.selected()
-	if !ok {
-		t.Fatal("nothing selected")
-	}
-	return it.Name
-}
-
 func selectNamed(t *testing.T, m *Model, name string) {
 	t.Helper()
 	for i, it := range m.shown {
 		if it.Name == name {
-			m.cursor = i
+			m.cur.cursor = i
 			return
 		}
 	}
@@ -76,128 +76,284 @@ func shownNames(m *Model) []string {
 	return out
 }
 
-func TestRolesPivotAndBack(t *testing.T) {
+func TestOpenRoleListsPermissions(t *testing.T) {
 	m := testModel(t)
-	selectNamed(t, m, "compute.instances.list")
-	press(m, "ctrl+r")
-	if m.cur.title == allView {
-		t.Fatal("pivot did not change the list")
+	selectNamed(t, m, roleAdmin)
+	press(m, "enter")
+	if want := []string{permDelete, permGet}; !reflect.DeepEqual(shownNames(m), want) {
+		t.Errorf("role permissions = %v, want %v", shownNames(m), want)
 	}
-	if got, want := shownNames(m), []string{"roles/compute.viewer"}; len(got) != 1 || got[0] != want[0] {
-		t.Errorf("roles pivot = %v, want %v", got, want)
+	if !strings.Contains(m.View().Content, "2 permissions") {
+		t.Error("role view should show its details")
+	}
+}
+
+func TestPermissionShowsServiceAndRoles(t *testing.T) {
+	m := testModel(t)
+	selectNamed(t, m, roleAdmin)
+	press(m, "enter")
+	selectNamed(t, m, permDelete)
+	press(m, "enter")
+	if want := []string{roleAdmin, svcCompute}; !reflect.DeepEqual(shownNames(m), want) {
+		t.Errorf("permission view = %v, want roles then service %v", shownNames(m), want)
+	}
+	if !strings.Contains(m.View().Content, "service: compute") {
+		t.Error("permission view should name the service")
+	}
+}
+
+func TestServiceOpensPermissionsAndRoles(t *testing.T) {
+	m := testModel(t)
+	selectNamed(t, m, svcCompute)
+	press(m, "enter")
+	if len(m.shown) == 0 {
+		t.Fatal("service view should list items")
+	}
+	if !strings.Contains(m.View().Content, "Roles (2)") {
+		t.Errorf("service view should group roles:\n%s", m.View().Content)
+	}
+}
+
+func TestDrillDownSelectionAndBack(t *testing.T) {
+	m := testModel(t)
+	selectNamed(t, m, roleAdmin)
+	press(m, "enter")
+	selectNamed(t, m, permDelete)
+	press(m, "enter")
+	if len(m.stack) != 2 {
+		t.Fatalf("stack depth = %d, want 2", len(m.stack))
 	}
 	press(m, "esc")
-	if m.cur.title != allView || len(m.stack) != 0 {
-		t.Errorf("after esc: title %q, stack %d", m.cur.title, len(m.stack))
+	if got := shownNames(m); !reflect.DeepEqual(got, []string{permDelete, permGet}) {
+		t.Errorf("esc should return to the role's permissions, got %v", got)
 	}
-	if got := selectedName(t, m); got != "compute.instances.list" {
-		t.Errorf("cursor after pop = %q, want the permission we pivoted from", got)
+	if got := m.cur.cursor; m.shown[got].Name != permDelete {
+		t.Errorf("cursor not restored on the permission we came from")
 	}
-}
-
-func TestPermsPivotFromRole(t *testing.T) {
-	m := testModel(t)
-	selectNamed(t, m, "roles/compute.admin")
-	press(m, "ctrl+p")
-	want := []string{"compute.instances.delete", permGet}
-	if got := shownNames(m); !reflect.DeepEqual(got, want) {
-		t.Errorf("perms = %v, want %v", got, want)
-	}
-}
-
-func TestServicePivotFromPermission(t *testing.T) {
-	m := testModel(t)
-	selectNamed(t, m, "storage.objects.get")
-	press(m, "ctrl+s")
-	if got := shownNames(m); !reflect.DeepEqual(got, []string{"storage.objects.get"}) {
-		t.Errorf("service perms = %v", got)
-	}
-}
-
-func TestPivotNeedsRightKind(t *testing.T) {
-	m := testModel(t)
-	selectNamed(t, m, "roles/compute.admin")
-	press(m, "ctrl+r")
-	if m.cur.title != allView || len(m.stack) != 0 {
-		t.Error("ctrl+r on a role should not push")
-	}
-	if m.status == "" {
-		t.Error("want a status message")
-	}
-}
-
-func TestTypingFiltersAndBackspaceEditsBeforePopping(t *testing.T) {
-	m := testModel(t)
-	press(m, "ctrl+s")
-	selectNamed(t, m, "compute")
-	press(m, "ctrl+s")
-	press(m, "c")
-	press(m, "o")
-	press(m, "backspace")
-	if len(m.stack) != 1 {
-		t.Fatalf("backspace with text should edit, not pop (stack %d)", len(m.stack))
-	}
-	if got := m.input.Value(); got != "c" {
-		t.Errorf("filter = %q, want c", got)
-	}
-	press(m, "backspace")
-	press(m, "backspace")
+	press(m, "esc")
 	if len(m.stack) != 0 {
-		t.Errorf("backspace on empty filter should pop (stack %d)", len(m.stack))
+		t.Errorf("esc should pop when the search is empty (stack %d)", len(m.stack))
 	}
 }
 
-func TestResetToFullIndex(t *testing.T) {
+func TestBackspaceDeletesAndNeverGoesBack(t *testing.T) {
 	m := testModel(t)
-	selectNamed(t, m, "roles/compute.admin")
-	press(m, "ctrl+p")
-	press(m, "ctrl+r")
+	selectNamed(t, m, roleAdmin)
+	press(m, "enter")
+	press(m, "g")
+	press(m, "backspace")
+	press(m, "backspace")
+	if len(m.stack) != 1 || m.input.Value() != "" {
+		t.Errorf("backspace should only delete (stack %d, search %q)", len(m.stack), m.input.Value())
+	}
+}
+
+func TestEscClearsSearchFirst(t *testing.T) {
+	m := testModel(t)
+	selectNamed(t, m, roleAdmin)
+	press(m, "enter")
+	press(m, "g")
+	press(m, "esc")
+	if len(m.stack) != 1 || m.input.Value() != "" {
+		t.Errorf("esc with text should clear it only (stack %d, search %q)", len(m.stack), m.input.Value())
+	}
+}
+
+func TestEscAtTopDoesNothing(t *testing.T) {
+	m := testModel(t)
+	before := len(m.shown)
+	press(m, "esc")
+	if len(m.stack) != 0 || len(m.shown) != before {
+		t.Errorf("esc at top should be a no-op (stack %d, shown %d)", len(m.stack), len(m.shown))
+	}
+}
+
+func TestResetToStartScreen(t *testing.T) {
+	m := testModel(t)
+	selectNamed(t, m, roleAdmin)
+	press(m, "enter")
 	press(m, "ctrl+o")
-	if len(m.stack) != 0 || m.cur.title != allView {
-		t.Errorf("ctrl+o left stack %d, title %q", len(m.stack), m.cur.title)
+	if len(m.stack) != 0 || !m.cur.home || len(m.shown) != 0 {
+		t.Errorf("ctrl+o left stack %d, home %v, shown %d", len(m.stack), m.cur.home, len(m.shown))
 	}
 }
 
-func TestQuitOnlyWithEmptyFilter(t *testing.T) {
+func TestQuitIsCtrlCOnly(t *testing.T) {
 	m := testModel(t)
-	press(m, "c")
 	_, cmd := m.Update(tea.KeyPressMsg{Code: 'q', Text: "q"})
 	if cmd != nil {
-		t.Error("q with a filter should type, not quit")
+		t.Error("q should type, not quit")
 	}
-	if m.input.Value() != "cq" {
-		t.Errorf("filter = %q, want cq", m.input.Value())
+	if m.input.Value() != "q" {
+		t.Errorf("search = %q, want q", m.input.Value())
 	}
-	m.setFilter("")
-	_, cmd = m.Update(tea.KeyPressMsg{Code: 'q', Text: "q"})
+	_, cmd = m.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
 	if cmd == nil {
-		t.Error("q with empty filter should quit")
+		t.Error("ctrl+c should quit")
 	}
 }
 
-func TestDetailOpenClose(t *testing.T) {
+func TestStartScreenIsBlankUntilTyped(t *testing.T) {
+	m := New(testModel(t).idx, time.Date(2026, 11, 11, 0, 0, 0, 0, time.UTC))
+	if len(m.shown) != 0 {
+		t.Fatalf("start screen shows %d items, want none", len(m.shown))
+	}
+	if !strings.Contains(m.View().Content, "type to search") {
+		t.Error("start screen should prompt for a search")
+	}
+	press(m, "s")
+	if len(m.shown) == 0 {
+		t.Error("typing should show matches")
+	}
+}
+
+func TestSearchMatchesRoleTitle(t *testing.T) {
 	m := testModel(t)
-	selectNamed(t, m, "roles/compute.viewer")
-	press(m, "enter")
-	if !m.detail {
-		t.Fatal("enter did not open detail")
+	m.setFilter("storage viewer")
+	m.refresh()
+	if got := shownNames(m); len(got) != 1 || got[0] != "roles/storage.viewer" {
+		t.Errorf("title search = %v", got)
+	}
+}
+
+func TestRoleRowShowsTitleAndID(t *testing.T) {
+	m := testModel(t)
+	if got := m.label(index.Item{Kind: index.KindRole, Name: "roles/compute.admin"}); got != "Compute Admin [roles/compute.admin]" {
+		t.Errorf("label = %q", got)
+	}
+	if got := m.label(index.Item{Kind: index.KindPermission, Name: permGet}); got != permGet {
+		t.Errorf("permission label = %q", got)
+	}
+}
+
+func TestHelpToggle(t *testing.T) {
+	m := testModel(t)
+	press(m, "?")
+	if !m.help || !strings.Contains(m.View().Content, "ctrl+c") {
+		t.Fatal("? should open the help overlay")
+	}
+	press(m, "down")
+	if !m.help {
+		t.Error("other keys should not close help")
 	}
 	press(m, "esc")
-	if m.detail {
-		t.Error("esc did not close detail")
+	if m.help {
+		t.Error("esc should close help")
 	}
 }
 
-func TestViewRendersListAndDetail(t *testing.T) {
+func TestListViewHasSectionHeadersBreadcrumbAndHintBar(t *testing.T) {
 	m := testModel(t)
-	list := m.View().Content
-	if !strings.Contains(list, "data from 2026-11-11") || !strings.Contains(list, "roles/storage.viewer") {
-		t.Errorf("list view missing header or row:\n%s", list)
+	m.setFilter("compute")
+	m.refresh()
+	out := ansiPattern.ReplaceAllString(m.View().Content, "")
+	for _, want := range []string{"Roles (2)", "Permissions (3)", "enter open", "search"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("list view missing %q:\n%s", want, out)
+		}
 	}
-	selectNamed(t, m, "roles/compute.admin")
+}
+
+func TestViewRendersStartAndRows(t *testing.T) {
+	m := testModel(t)
+	out := m.View().Content
+	if !strings.Contains(out, "data from 2026-11-11") || !strings.Contains(out, "Storage Viewer [roles/storage.viewer]") {
+		t.Errorf("list view missing header or row:\n%s", out)
+	}
+}
+
+func TestSearchIsScopedToTheView(t *testing.T) {
+	m := testModel(t)
+	selectNamed(t, m, roleAdmin)
 	press(m, "enter")
-	detail := m.View().Content
-	if !strings.Contains(detail, "Compute Admin") || !strings.Contains(detail, "2 permissions") {
-		t.Errorf("detail view wrong:\n%s", detail)
+	for _, c := range "delete" {
+		press(m, string(c))
+	}
+	if got := shownNames(m); !reflect.DeepEqual(got, []string{permDelete}) {
+		t.Errorf("role search = %v, want only its permissions matching", got)
+	}
+	press(m, "esc")
+	press(m, "esc")
+	if got := len(m.shown); got != len(m.all) {
+		t.Errorf("back should restore the home list (%d items), got %d", len(m.all), got)
+	}
+	if m.input.Placeholder != homePlaceholder {
+		t.Errorf("placeholder = %q, want the home one", m.input.Placeholder)
+	}
+}
+
+func TestPlaceholderNamesTheViewsSearch(t *testing.T) {
+	m := testModel(t)
+	selectNamed(t, m, roleAdmin)
+	press(m, "enter")
+	if m.input.Placeholder != "search permissions" {
+		t.Errorf("role placeholder = %q", m.input.Placeholder)
+	}
+}
+
+func TestBreadcrumbDropsOldestCrumbs(t *testing.T) {
+	m := testModel(t)
+	m.width = 40
+	selectNamed(t, m, roleAdmin)
+	press(m, "enter")
+	selectNamed(t, m, permDelete)
+	press(m, "enter")
+	crumb := m.breadcrumb()
+	if !strings.HasPrefix(crumb, "… › ") || !strings.HasSuffix(crumb, permDelete) {
+		t.Errorf("breadcrumb = %q, want truncated from the left", crumb)
+	}
+}
+
+func TestTabSelectsAndOutputsYAML(t *testing.T) {
+	m := testModel(t)
+	selectNamed(t, m, "storage.objects.get")
+	press(m, "tab")
+	selectNamed(t, m, roleAdmin)
+	press(m, "tab")
+	selectNamed(t, m, svcCompute)
+	press(m, "tab")
+	if len(m.picked) != 3 {
+		t.Fatalf("picked %d items, want 3 (tab toggles)", len(m.picked))
+	}
+	if got := m.Selection(); got != "" {
+		t.Errorf("Selection before ctrl+q = %q, want empty", got)
+	}
+	_, _ = m.Update(tea.KeyPressMsg{Code: 'q', Mod: tea.ModCtrl})
+	want := "roles:\n  - roles/compute.admin # Compute Admin\npermissions:\n  - storage.objects.get\nservices:\n  - compute\n"
+	if got := m.Selection(); got != want {
+		t.Errorf("Selection = %q, want %q", got, want)
+	}
+}
+
+func TestSelectionCtrlQEmitsAndCtrlCAborts(t *testing.T) {
+	m := testModel(t)
+	selectNamed(t, m, roleAdmin)
+	press(m, "tab")
+	_, cmd := m.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
+	if cmd == nil || m.Selection() != "" {
+		t.Error("ctrl+c should quit with no output")
+	}
+}
+
+func TestJumpKeys(t *testing.T) {
+	m := testModel(t)
+	press(m, "ctrl+p")
+	if m.shown[m.cur.cursor].Kind != index.KindPermission {
+		t.Errorf("ctrl+p landed on %v", m.shown[m.cur.cursor])
+	}
+	press(m, "ctrl+s")
+	if m.shown[m.cur.cursor].Kind != index.KindService {
+		t.Errorf("ctrl+s landed on %v", m.shown[m.cur.cursor])
+	}
+	press(m, "ctrl+r")
+	if m.shown[m.cur.cursor].Kind != index.KindRole {
+		t.Errorf("ctrl+r landed on %v", m.shown[m.cur.cursor])
+	}
+}
+
+func TestServiceShownAsPrefix(t *testing.T) {
+	m := testModel(t)
+	if got := m.label(index.Item{Kind: index.KindService, Name: svcCompute}); got != svcCompute {
+		t.Errorf("service label = %q", got)
 	}
 }

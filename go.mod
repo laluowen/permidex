@@ -1,4 +1,4 @@
-module github.com/lalu-uk/permidex
+module github.com/laluowen/permidex
 
 go 1.27.3
 

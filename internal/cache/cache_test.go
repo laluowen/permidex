@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lalu-uk/permidex/internal/iam"
+	"github.com/laluowen/permidex/internal/iam"
 )
 
 func TestWriteReadRoundTrip(t *testing.T) {

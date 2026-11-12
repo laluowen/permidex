@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/lalu-uk/permidex/internal/iam"
+	"github.com/laluowen/permidex/internal/iam"
 )
 
 // ErrMissing means no cache file exists yet.

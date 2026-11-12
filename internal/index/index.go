@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/lalu-uk/permidex/internal/iam"
+	"github.com/laluowen/permidex/internal/iam"
 )
 
 // Kind is what an Item names.

@@ -112,3 +112,16 @@ func names(roles []Role) []string {
 	}
 	return out
 }
+
+func TestRolesCycleFails(t *testing.T) {
+	next := map[string]string{"": "a", "a": "b", "b": "a"}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(t, w, listResponse{NextPageToken: next[r.URL.Query().Get("pageToken")]})
+	}))
+	defer srv.Close()
+
+	_, err := Client{HTTP: srv.Client(), URL: srv.URL}.Roles(t.Context())
+	if err == nil {
+		t.Fatal("want error on a page token cycle")
+	}
+}

@@ -7,7 +7,7 @@ Browse GCP predefined IAM roles and permissions in the terminal. Find which role
 Build from source (Go 1.27+):
 
 ```sh
-go install github.com/lalu-uk/permidex/cmd/permidex@latest
+go install github.com/laluowen/permidex/cmd/permidex@latest
 ```
 
 Or download a release archive for darwin or linux (amd64, arm64) and put `permidex` on your `PATH`.
@@ -31,17 +31,21 @@ The cache is `$XDG_CACHE_HOME/permidex/roles.json`, or `~/.cache/permidex/roles.
 
 ## Keys
 
+Start with a blank screen and type to search roles (by ID or title), permissions and services. Each result is selectable. Opening one shows its details and related items: a role lists its permissions; a permission shows its service and the roles that grant it; a service lists its permissions and roles.
+
 | key | action |
 |---|---|
-| type | filter the current list |
-| `enter` | detail for the selected item |
-| `ctrl+r` | roles that grant the selected permission |
-| `ctrl+p` | permissions in the selected role |
-| `ctrl+s` | permissions in the selected service (or the service of the selected permission) |
-| `esc`, or `backspace` on an empty filter | back (pop the pivot stack) |
-| `ctrl+o`, `home` | reset to the full index |
-| `up` `down` `pgup` `pgdown` | move |
-| `q`, `ctrl+c` | quit (`q` only on an empty filter, so you can type it) |
+| type | search the current list |
+| `enter` | open the selected item |
+| `esc` | back (clears the search first) |
+| `backspace` | delete a character |
+| `tab` | select or deselect the item |
+| `ctrl+r`, `ctrl+s`, `ctrl+p` | jump to the roles, services or permissions section |
+| `↑` `↓` `pgup` `pgdn` | move |
+| `ctrl+o`, `home` | reset to the start screen |
+| `?` | key help (`?` or `esc` closes it) |
+| `ctrl+q` | quit and print the selection to stdout as YAML |
+| `ctrl+c` | abort: quit and print nothing |
 
 ## Development
 

@@ -18,7 +18,8 @@ Terminal browser for GCP predefined IAM roles and permissions. One static Go bin
 
 ## Decisions
 
-- Pivot keys are `ctrl+r`, `ctrl+p`, `ctrl+s`, not bare `r`/`p`/`s`, because bare letters are filter input. `backspace` and `q` act as back and quit only when the filter is empty.
+- Navigation is drill-down: `enter` opens an item; `esc` goes back (clears the search first). Arrow left/right and `backspace` do not navigate, so the search text stays editable. Bare letters and space are search input, so selection is `tab`. `ctrl+q` quits and prints the selection as YAML; `ctrl+c` aborts with no output.
+- Services are the first dot-segment of a permission (`compute`), shown and written to the YAML as-is. GCP exposes no permission-to-service mapping and the roles API has no service field, so there is no FQDN (`*.googleapis.com`): deriving it would guess. Don't add FQDN mapping or per-service exceptions.
 - Auth: ADC only. No `gcloud` binary at runtime.
 
 ## Commits

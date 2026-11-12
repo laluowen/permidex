@@ -9,10 +9,10 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/lalu-uk/permidex/internal/cache"
-	"github.com/lalu-uk/permidex/internal/iam"
-	"github.com/lalu-uk/permidex/internal/index"
-	"github.com/lalu-uk/permidex/internal/tui"
+	"github.com/laluowen/permidex/internal/cache"
+	"github.com/laluowen/permidex/internal/iam"
+	"github.com/laluowen/permidex/internal/index"
+	"github.com/laluowen/permidex/internal/tui"
 )
 
 func main() {
@@ -71,6 +71,12 @@ func browse() error {
 		return err
 	}
 	m := tui.New(index.Build(snap.Roles), snap.FetchedAt)
-	_, err = tea.NewProgram(m).Run()
-	return err
+	final, err := tea.NewProgram(m, tea.WithOutput(os.Stderr)).Run()
+	if err != nil {
+		return err
+	}
+	if fm, ok := final.(*tui.Model); ok {
+		fmt.Print(fm.Selection())
+	}
+	return nil
 }
