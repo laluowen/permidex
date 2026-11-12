@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  pull_request:
+    # Not applied to `push` below: Release fires via workflow_run after CI
+    # completes on main, so path-filtering push would stop a docs-only merge
+    # (such as the release PR) from ever triggering a release.
+    paths:
+      - "**/*.go"
+      - "go.mod"
+      - "go.sum"
+      - "testdata/**"
+      - ".golangci.yaml"
+      - ".github/workflows/ci.yml"
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: v2.15.0
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: go test -race ./...
+        run: go test -race ./...

@@ -17,15 +17,46 @@ builds:
     goarch:
       - amd64
       - arm64
+    hooks:
+      post:
+        - syft "{{ .Path }}" -o spdx-json="dist/{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}.sbom.json"
 
 archives:
   - formats: ["tar.gz"]
     name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
     files:
       - LICENSE.md
+      - src: "dist/{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}.sbom.json"
+        strip_parent: true
 
 checksum:
   name_template: "checksums.txt"
 
+# Keyless cosign signature (Sigstore) on checksums.txt. It lists the sha256 of
+# every archive, and each archive holds its SBOM, so one signed file covers
+# everything. The bundle is `checksums.txt.sigstore.json`.
+signs:
+  - id: cosign
+    cmd: cosign
+    signature: "${artifact}.sigstore.json"
+    args:
+      - sign-blob
+      - "--bundle=${signature}"
+      - "${artifact}"
+      - "--yes"
+    artifacts: checksum
+    output: true
+
+# release-please (see .github/workflows/release.yml) creates the release as a
+# DRAFT with its tag and notes. GoReleaser uploads all assets to that draft,
+# then, because `draft` is false, publishes it as the last step.
+changelog:
+  disable: true
+
 release:
-  draft: true
+  use_existing_draft: true
+  draft: false
+  mode: keep-existing
+  replace_existing_artifacts: true
+  preflight:
+    fail_on_error: true
