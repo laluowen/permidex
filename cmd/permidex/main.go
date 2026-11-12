@@ -31,7 +31,7 @@ func main() {
 }
 
 // providerFirst moves the first non-flag argument, the provider, to the front, so that both
-// `permidex gcp -r` and `permidex -r gcp` work.
+// `permidex gcp --replace|-r` and `permidex --replace|-r gcp` work.
 func providerFirst(args []string) []string {
 	for i, a := range args {
 		if !strings.HasPrefix(a, "-") {
