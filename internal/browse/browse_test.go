@@ -29,8 +29,8 @@ func (fake) Name() string         { return "fake" }
 func (fake) FetchedAt() time.Time { return time.Date(2026, 11, 11, 0, 0, 0, 0, time.UTC) }
 func (fake) Sections() []Section {
 	return []Section{
-		{Kind: kindThing, Title: "Things", Key: "things"},
-		{Kind: kindPart, Title: "Parts", Key: "parts"},
+		{Kind: kindThing, Title: "things", Key: "things"},
+		{Kind: kindPart, Title: "parts", Key: "parts"},
 	}
 }
 
@@ -302,7 +302,7 @@ func TestFooterListsEveryKeyAndNoHelpScreen(t *testing.T) {
 	m := newModel()
 	m.width = 200
 	out := plainView(m)
-	for _, want := range []string{"↑↓ pgup pgdn home end move", "enter open", "esc back", "tab select", "ctrl+j Things", "ctrl+o start screen", "ctrl+q done"} {
+	for _, want := range []string{"↑↓ pgup pgdn home end move", "enter open", "esc back", "tab select", "ctrl+j things", "ctrl+o start screen", "ctrl+q done"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("footer missing %q:\n%s", want, out)
 		}
@@ -317,7 +317,7 @@ func TestListViewShowsHeadersBreadcrumbAndHints(t *testing.T) {
 	m.setFilter("one")
 	m.refresh()
 	out := plainView(m)
-	for _, want := range []string{"Things (1)", "enter open", "search", "permidex fake"} {
+	for _, want := range []string{"things (1)", "enter open", "search", "permidex fake"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("list view missing %q:\n%s", want, out)
 		}
@@ -341,7 +341,7 @@ func TestBottomBarShowsJumpKeysAndSectionNames(t *testing.T) {
 	m := newModel()
 	m.width = 200
 	out := plainView(m)
-	if !strings.Contains(out, "ctrl+j Things") || !strings.Contains(out, "ctrl+k Parts") {
+	if !strings.Contains(out, "ctrl+j things") || !strings.Contains(out, "ctrl+k parts") {
 		t.Errorf("bar should name each jump key's section:\n%s", out)
 	}
 }

@@ -13,7 +13,7 @@ type Item struct {
 // Section is one kind, shown as its own group. Sections are listed in display order.
 type Section struct {
 	Kind  string // the Item.Kind this section groups
-	Title string // header text, such as "Roles"
+	Title string // header text, such as "roles"
 	Key   string // YAML key in the selection output, such as "roles"
 }
 
