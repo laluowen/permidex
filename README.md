@@ -12,6 +12,16 @@ go install github.com/laluowen/permidex/cmd/permidex@latest
 
 Or download a release archive for darwin or linux (amd64, arm64) and put `permidex` on your `PATH`.
 
+### mise
+
+[mise](https://mise.jdx.dev) installs the binary straight from the GitHub release:
+
+```sh
+mise use -g github:laluowen/permidex@latest
+```
+
+Then run `permidex`. By default mise holds releases back for 24 hours (`minimum_release_age`), so `@latest` only picks a release up a day after it's published.
+
 ## Use
 
 Authenticate with Application Default Credentials (no quota project is needed):
