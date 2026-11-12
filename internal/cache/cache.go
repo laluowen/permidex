@@ -1,4 +1,4 @@
-// Package cache stores the fetched roles as one JSON file.
+// Package cache stores provider catalogues as JSON files under the user's cache directory.
 package cache
 
 import (
@@ -8,26 +8,13 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"time"
-
-	"github.com/laluowen/permidex/internal/iam"
 )
 
 // ErrMissing means no cache file exists yet.
 var ErrMissing = errors.New("no cache")
 
-// Snapshot is the cache file content.
-type Snapshot struct {
-	Version   int        `json:"version"`
-	FetchedAt time.Time  `json:"fetchedAt"`
-	Roles     []iam.Role `json:"roles"`
-}
-
-// Version is the cache file format. Bump it, and update schema/roles.schema.json, on any change to the file.
-const Version = 1
-
-// Path returns $XDG_CACHE_HOME/permidex/roles.json, or ~/.cache/permidex/roles.json.
-func Path() (string, error) {
+// Path returns the cache file at parts under $XDG_CACHE_HOME/permidex, or ~/.cache/permidex.
+func Path(parts ...string) (string, error) {
 	dir := os.Getenv("XDG_CACHE_HOME")
 	if dir == "" {
 		home, err := os.UserHomeDir()
@@ -36,17 +23,16 @@ func Path() (string, error) {
 		}
 		dir = filepath.Join(home, ".cache")
 	}
-	return filepath.Join(dir, "permidex", "roles.json"), nil
+	return filepath.Join(append([]string{dir, "permidex"}, parts...)...), nil
 }
 
-// Write replaces path atomically: it writes a temp file in the same directory, syncs it, then renames it.
-func Write(path string, s Snapshot) error {
-	s.Version = Version
+// WriteJSON replaces path atomically: it writes a temp file in the same directory, syncs it, then renames it.
+func WriteJSON(path string, v any) error {
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return fmt.Errorf("create cache dir: %w", err)
 	}
-	tmp, err := os.CreateTemp(dir, ".roles-*.json")
+	tmp, err := os.CreateTemp(dir, ".cache-*.json")
 	if err != nil {
 		return fmt.Errorf("create temp file: %w", err)
 	}
@@ -54,7 +40,7 @@ func Write(path string, s Snapshot) error {
 
 	enc := json.NewEncoder(tmp)
 	enc.SetIndent("", "  ")
-	if err := enc.Encode(s); err != nil {
+	if err := enc.Encode(v); err != nil {
 		_ = tmp.Close()
 		return fmt.Errorf("encode cache: %w", err)
 	}
@@ -71,21 +57,17 @@ func Write(path string, s Snapshot) error {
 	return nil
 }
 
-// Read loads the cache at path. It returns ErrMissing if the file does not exist.
-func Read(path string) (Snapshot, error) {
-	data, err := os.ReadFile(path) //nolint:gosec // path is the cache file from Path or a caller-chosen test path
+// ReadJSON decodes the cache at path into v. It returns ErrMissing if the file does not exist.
+func ReadJSON(path string, v any) error {
+	data, err := os.ReadFile(path) //nolint:gosec // path comes from Path or a caller-chosen test path
 	if errors.Is(err, fs.ErrNotExist) {
-		return Snapshot{}, ErrMissing
+		return ErrMissing
 	}
 	if err != nil {
-		return Snapshot{}, fmt.Errorf("read cache: %w", err)
+		return fmt.Errorf("read cache: %w", err)
 	}
-	var s Snapshot
-	if err := json.Unmarshal(data, &s); err != nil {
-		return Snapshot{}, fmt.Errorf("decode %s: %w (run `permidex refresh`)", path, err)
+	if err := json.Unmarshal(data, v); err != nil {
+		return fmt.Errorf("decode %s: %w (refresh the cache)", path, err)
 	}
-	if s.Version != Version {
-		return Snapshot{}, fmt.Errorf("cache %s is format version %d, want %d (run `permidex refresh`)", path, s.Version, Version)
-	}
-	return s, nil
+	return nil
 }

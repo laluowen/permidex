@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/laluowen/permidex/main/schema/roles.schema.json",
-  "title": "permidex roles cache",
-  "description": "The roles.json file written by `permidex refresh`: predefined GCP IAM roles and their permissions.",
+  "$id": "https://raw.githubusercontent.com/laluowen/permidex/main/schema/gcp-roles.schema.json",
+  "title": "permidex GCP roles cache",
+  "description": "The GCP cache written by `permidex gcp -r`: predefined GCP IAM roles and their permissions.",
   "type": "object",
   "required": ["version", "fetchedAt", "roles"],
   "additionalProperties": false,

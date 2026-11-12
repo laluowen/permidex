@@ -1,0 +1,208 @@
+package gcp
+
+import (
+	"encoding/json"
+	"errors"
+	"os"
+	"path/filepath"
+	"reflect"
+	"slices"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/laluowen/permidex/v2/internal/browse"
+	"github.com/laluowen/permidex/v2/internal/cache"
+	"github.com/laluowen/permidex/v2/internal/iam"
+)
+
+const (
+	roleViewer = "roles/compute.viewer"
+	permGet    = "compute.instances.get"
+)
+
+func fixture(t *testing.T) *Source {
+	t.Helper()
+	data, err := os.ReadFile("../../testdata/roles.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var f struct {
+		Roles []iam.Role `json:"roles"`
+	}
+	if err := json.Unmarshal(data, &f); err != nil {
+		t.Fatal(err)
+	}
+	return NewSource(Snapshot{Version: CacheVersion, FetchedAt: time.Date(2026, 11, 11, 0, 0, 0, 0, time.UTC), Roles: f.Roles})
+}
+
+func names(items []browse.Item) []string {
+	out := make([]string, len(items))
+	for i, it := range items {
+		out[i] = it.Name
+	}
+	return out
+}
+
+func TestSectionsInOrder(t *testing.T) {
+	secs := fixture(t).Sections()
+	keys := make([]string, 0, len(secs))
+	for _, s := range secs {
+		keys = append(keys, s.Key)
+	}
+	if want := []string{"roles", "permissions", "services"}; !slices.Equal(keys, want) {
+		t.Errorf("section keys = %v, want %v", keys, want)
+	}
+}
+
+func TestRootIsHomeWithEverything(t *testing.T) {
+	root := fixture(t).Root()
+	if !root.Home || len(root.Items) == 0 {
+		t.Fatalf("root = home %v, %d items", root.Home, len(root.Items))
+	}
+	if root.Items[0].Kind != kindRole {
+		t.Errorf("first root item kind = %q, want roles first", root.Items[0].Kind)
+	}
+}
+
+func TestOpenRoleListsItsPermissions(t *testing.T) {
+	v := fixture(t).Open(browse.Item{Kind: kindRole, Name: roleViewer})
+	if want := []string{permGet, "compute.instances.list", "compute.projects.get"}; !slices.Equal(names(v.Items), want) {
+		t.Errorf("role items = %v, want %v", names(v.Items), want)
+	}
+	if !strings.Contains(strings.Join(v.Info, "\n"), "3 permissions") {
+		t.Errorf("role info = %v", v.Info)
+	}
+}
+
+func TestOpenPermissionListsRolesThenService(t *testing.T) {
+	v := fixture(t).Open(browse.Item{Kind: kindPermission, Name: permGet})
+	want := []string{roleViewer, "compute"}
+	if !slices.Equal(names(v.Items), want) {
+		t.Errorf("permission items = %v, want %v", names(v.Items), want)
+	}
+	if v.Items[len(v.Items)-1].Kind != kindService {
+		t.Errorf("service should come last, got kind %q", v.Items[len(v.Items)-1].Kind)
+	}
+}
+
+func TestOpenServiceListsRolesThenPermissions(t *testing.T) {
+	v := fixture(t).Open(browse.Item{Kind: kindService, Name: "compute"})
+	if len(v.Items) == 0 || v.Items[0].Kind != kindRole {
+		t.Fatalf("service items should start with roles: %v", v.Items)
+	}
+	last := v.Items[len(v.Items)-1]
+	if last.Kind != kindPermission {
+		t.Errorf("service items should end with permissions, got %v", last)
+	}
+}
+
+func TestLabelAndTitle(t *testing.T) {
+	s := fixture(t)
+	role := browse.Item{Kind: kindRole, Name: roleViewer}
+	if got := s.Label(role); got != "Compute Viewer [roles/compute.viewer]" {
+		t.Errorf("role label = %q", got)
+	}
+	if got := s.Title(role); got != "Compute Viewer" {
+		t.Errorf("role title = %q", got)
+	}
+	perm := browse.Item{Kind: kindPermission, Name: permGet}
+	if s.Label(perm) != perm.Name || s.Title(perm) != "" {
+		t.Errorf("permission label/title = %q/%q", s.Label(perm), s.Title(perm))
+	}
+}
+
+func TestLoadMissingAndWrongVersion(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := Load(filepath.Join(dir, "roles.json")); !errors.Is(err, cache.ErrMissing) {
+		t.Errorf("missing: err = %v, want ErrMissing", err)
+	}
+	path := filepath.Join(dir, "roles.json")
+	if err := cache.WriteJSON(path, Snapshot{Version: CacheVersion + 1}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Load(path); err == nil || !strings.Contains(err.Error(), "permidex gcp -r") {
+		t.Errorf("wrong version: err = %v, want a refresh hint", err)
+	}
+}
+
+func TestLoadRoundTrip(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "roles.json")
+	want := Snapshot{
+		Version:   CacheVersion,
+		FetchedAt: time.Date(2026, 11, 11, 9, 30, 0, 0, time.UTC),
+		Roles:     []iam.Role{{Name: "roles/a.b", IncludedPermissions: []string{"a.b.c"}}},
+	}
+	if err := cache.WriteJSON(path, want); err != nil {
+		t.Fatal(err)
+	}
+	got, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.FetchedAt.Equal(want.FetchedAt) || !reflect.DeepEqual(got.Roles, want.Roles) {
+		t.Errorf("Load = %+v, want %+v", got, want)
+	}
+}
+
+func TestSchemaMatchesStructs(t *testing.T) {
+	data, err := os.ReadFile("../../schema/gcp-roles.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var schema struct {
+		Properties map[string]struct {
+			Const *int `json:"const"`
+		} `json:"properties"`
+		Defs struct {
+			Role struct {
+				Properties map[string]json.RawMessage `json:"properties"`
+			} `json:"role"`
+		} `json:"$defs"`
+	}
+	if err := json.Unmarshal(data, &schema); err != nil {
+		t.Fatal(err)
+	}
+
+	full := Snapshot{
+		Version:   CacheVersion,
+		FetchedAt: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+		Roles: []iam.Role{{
+			Name: "roles/a.b", Title: "T", Description: "D", Stage: "GA", IncludedPermissions: []string{"a.b.c"},
+		}},
+	}
+	raw, err := json.Marshal(full)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var top map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &top); err != nil {
+		t.Fatal(err)
+	}
+	var roles []map[string]json.RawMessage
+	if err := json.Unmarshal(top["roles"], &roles); err != nil {
+		t.Fatal(err)
+	}
+
+	assertKeys(t, "top level", keysOf(top), keysOf(schema.Properties))
+	assertKeys(t, "role", keysOf(roles[0]), keysOf(schema.Defs.Role.Properties))
+	if schema.Properties["version"].Const == nil || *schema.Properties["version"].Const != CacheVersion {
+		t.Errorf("schema version const does not match CacheVersion (%d)", CacheVersion)
+	}
+}
+
+func keysOf[V any](m map[string]V) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	slices.Sort(out)
+	return out
+}
+
+func assertKeys(t *testing.T, what string, got, want []string) {
+	t.Helper()
+	if !slices.Equal(got, want) {
+		t.Errorf("%s keys = %v, schema has %v", what, got, want)
+	}
+}

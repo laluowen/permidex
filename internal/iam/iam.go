@@ -42,10 +42,12 @@ type Doer interface {
 }
 
 // Client lists roles. HTTP must send authorized requests (see NewADCClient).
-// URL is the roles.list endpoint; empty means DefaultURL.
+// URL is the roles.list endpoint; empty means DefaultURL. OnPage, if set, is called after each page
+// with the page count and the roles fetched so far.
 type Client struct {
-	HTTP Doer
-	URL  string
+	HTTP   Doer
+	URL    string
+	OnPage func(pages, roles int)
 }
 
 // NewADCClient returns an *http.Client that authorizes with Application Default Credentials.
@@ -68,12 +70,15 @@ func (c Client) Roles(ctx context.Context) ([]Role, error) {
 	var roles []Role
 	var token string
 	seen := map[string]bool{}
-	for {
+	for pages := 1; ; pages++ {
 		page, err := c.page(ctx, base, token)
 		if err != nil {
 			return nil, err
 		}
 		roles = append(roles, page.Roles...)
+		if c.OnPage != nil {
+			c.OnPage(pages, len(roles))
+		}
 		if page.NextPageToken == "" {
 			return roles, nil
 		}

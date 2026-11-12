@@ -1,17 +1,17 @@
 ---
-name: permidex
-description: Look up GCP predefined IAM roles and their permissions offline, from the permidex cache. Use when you need a role's ID, title, description or permissions, which roles grant a permission, or the permissions in a role. Triggers: IAM role, roles/..., which role grants, permission lookup, least privilege.
+name: permidex-gcp
+description: Look up GCP predefined IAM roles and their permissions offline, from the permidex GCP cache. Use when you need a role's ID, title, description or permissions, which roles grant a permission, or the permissions in a role. Triggers: IAM role, roles/..., which role grants, permission lookup, least privilege.
 ---
 
-# permidex
+# permidex-gcp
 
-`permidex` caches GCP's predefined IAM roles in a JSON file. Query that file directly. It is the offline index, so you don't need the TUI or the network.
+`permidex gcp` caches GCP's predefined IAM roles in a JSON file. Query that file directly. It is the offline index, so you don't need the TUI or the network.
 
 ## Where the file is
 
-`${XDG_CACHE_HOME:-$HOME/.cache}/permidex/roles.json`
+`${XDG_CACHE_HOME:-$HOME/.cache}/permidex/gcp/roles.json`
 
-Its format is defined in `schema/roles.schema.json` in the permidex repository. It has `version` (currently `1`), `fetchedAt`, and `roles[]`. Each role has `name` (such as `roles/compute.admin`), and may have `title`, `description`, `stage` and `includedPermissions`. Empty fields are omitted.
+Its format is defined in `schema/gcp-roles.schema.json` in the permidex repository. It has `version` (currently `1`), `fetchedAt`, and `roles[]`. Each role has `name` (such as `roles/compute.admin`), and may have `title`, `description`, `stage` and `includedPermissions`. Empty fields are omitted.
 
 The file is about 10 MB. Query it with `jq`. Don't read it whole.
 
@@ -21,7 +21,7 @@ If the file is missing, or its `version` isn't `1`, build it. This needs Applica
 
 ```sh
 gcloud auth application-default login
-permidex refresh
+permidex gcp -r
 ```
 
 Check `fetchedAt` if the data might be out of date. Refresh when it matters.
@@ -31,7 +31,7 @@ Check `fetchedAt` if the data might be out of date. Refresh when it matters.
 Set `F` to the path:
 
 ```sh
-F="${XDG_CACHE_HOME:-$HOME/.cache}/permidex/roles.json"
+F="${XDG_CACHE_HOME:-$HOME/.cache}/permidex/gcp/roles.json"
 ```
 
 Role by exact ID:
