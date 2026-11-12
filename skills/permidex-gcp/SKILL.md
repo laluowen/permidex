@@ -21,7 +21,7 @@ If the file is missing, or its `version` isn't `1`, build it. This needs Applica
 
 ```sh
 gcloud auth application-default login
-permidex gcp -r
+permidex gcp --refresh|-r
 ```
 
 Check `fetchedAt` if the data might be out of date. Refresh when it matters.

@@ -4,7 +4,7 @@ Terminal browser for GCP predefined IAM roles and permissions. One static Go bin
 
 ## Layout
 
-- `cmd/permidex`: entrypoint. `permidex <provider>` browses; `permidex <provider> -r` refreshes that provider's cache.
+- `cmd/permidex`: entrypoint. `permidex <provider>` browses; `permidex <provider> --refresh|-r` refreshes that provider's cache.
 - `internal/browse`: the shared Bubble Tea browser. Knows nothing about any provider. Everything goes through `browse.Source`.
 - `internal/gcp`: the GCP provider. Cache load and refresh, and the `browse.Source` implementation.
 - `internal/iam`: paged `roles.list` (`view=FULL`) over an authorized `*http.Client`; `NewADCClient` builds one from ADC.

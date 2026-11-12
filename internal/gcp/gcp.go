@@ -25,7 +25,7 @@ const (
 	kindService    = "service"
 )
 
-// Snapshot is the GCP cache file: every predefined role, as written by `permidex gcp -r`.
+// Snapshot is the GCP cache file: every predefined role, as written by `permidex gcp --refresh|-r`.
 type Snapshot struct {
 	Version   int        `json:"version"`
 	FetchedAt time.Time  `json:"fetchedAt"`
@@ -45,7 +45,7 @@ func Load(path string) (Snapshot, error) {
 		return Snapshot{}, err
 	}
 	if s.Version != CacheVersion {
-		return Snapshot{}, fmt.Errorf("cache %s is format version %d, want %d (run `permidex gcp -r`)", path, s.Version, CacheVersion)
+		return Snapshot{}, fmt.Errorf("cache %s is format version %d, want %d (run `permidex gcp --refresh|-r`)", path, s.Version, CacheVersion)
 	}
 	return s, nil
 }

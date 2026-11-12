@@ -125,7 +125,7 @@ func TestLoadMissingAndWrongVersion(t *testing.T) {
 	if err := cache.WriteJSON(path, Snapshot{Version: CacheVersion + 1}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Load(path); err == nil || !strings.Contains(err.Error(), "permidex gcp -r") {
+	if _, err := Load(path); err == nil || !strings.Contains(err.Error(), "permidex gcp --refresh|-r") {
 		t.Errorf("wrong version: err = %v, want a refresh hint", err)
 	}
 }

@@ -45,7 +45,7 @@ Schema: `schema/aws-catalog.schema.json`, checked against the structs by a test,
 
 - `internal/aws` implements `browse.Source`, and holds the fetch, refresh and cache, in the same shape as `internal/gcp`.
 - The shared `internal/browse` should need no changes. If it does, that's a sign the `Source` interface is missing something GCP also needs, and that's worth a decision first.
-- `cmd/permidex`: add `aws` to the provider switch. `-r` refreshes the catalogue.
+- `cmd/permidex`: add `aws` to the provider switch. `--refresh|-r` refreshes the catalogue.
 
 ## Auth and permissions
 
@@ -53,7 +53,7 @@ AWS default credential chain (environment, shared config, SSO, instance role). T
 
 ## Progress
 
-`-r` prints a line per service reference fetch and per policy batch to stderr, the same as GCP's page progress. Speed isn't a priority: the output is cached.
+`--refresh|-r` prints a line per service reference fetch and per policy batch to stderr, the same as GCP's page progress. Speed isn't a priority: the output is cached.
 
 ## Skill
 
@@ -73,6 +73,6 @@ AWS default credential chain (environment, shared config, SSO, instance role). T
 3. Wildcard expansion, with table tests (`s3:*`, `s3:Get*`, `*`, exact match, no match).
 4. Cache, schema, drift test.
 5. `aws` `Source` implementation, with tests for the three views.
-6. CLI: `permidex aws` and `-r`.
+6. CLI: `permidex aws` and `--refresh|-r`.
 7. README, AGENTS.md, skill.
 8. Release as a separate minor version, not part of the v2 change.

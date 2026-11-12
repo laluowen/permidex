@@ -15,12 +15,12 @@ import (
 	"github.com/laluowen/permidex/v2/internal/gcp"
 )
 
-const usage = `usage: permidex <provider> [-r]
+const usage = `usage: permidex <provider> [--refresh|-r]
 
   gcp    browse GCP predefined IAM roles and permissions
-  -r     refresh that provider's cache from the cloud instead of browsing
+  --refresh|-r     refresh that provider's cache from the cloud instead of browsing
 
-Run "permidex <provider> -r" once before browsing.`
+Run "permidex <provider> --refresh|-r" once before browsing.`
 
 func main() {
 	if err := run(context.Background(), os.Args[1:]); err != nil {
@@ -75,7 +75,7 @@ func gcpCmd(ctx context.Context, args []string) error {
 	}
 	snap, err := gcp.Load(path)
 	if errors.Is(err, cache.ErrMissing) {
-		return fmt.Errorf("no cache at %s: run `permidex gcp -r`", path)
+		return fmt.Errorf("no cache at %s: run `permidex gcp --refresh|-r`", path)
 	}
 	if err != nil {
 		return err

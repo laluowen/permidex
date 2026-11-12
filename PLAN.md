@@ -34,10 +34,10 @@ Assumed: no quota project is needed. Confirm in step 2.
 ### Cache
 
 - Path: `$XDG_CACHE_HOME/permidex/gcp/roles.json`, falling back to `~/.cache/permidex/gcp/roles.json`. Each provider has its own directory.
-- Written by `permidex gcp -r`, read by `permidex gcp`. The file has a `version`; a mismatch is refused with a refresh hint.
+- Written by `permidex gcp --refresh|-r`, read by `permidex gcp`. The file has a `version`; a mismatch is refused with a refresh hint.
 - Write to a temp file, then rename (atomic).
 - Store the fetch time. The TUI shows "data from <date>" in the header.
-- Missing cache: the browser exits with "run `permidex gcp -r`". It does not fetch on its own.
+- Missing cache: the browser exits with "run `permidex gcp --refresh|-r`". It does not fetch on its own.
 
 ### Derived in memory
 
@@ -56,7 +56,7 @@ Not in the MVP. A `go:embed` snapshot plus a nightly CI refresh would make the b
 Module: `github.com/laluowen/permidex/v2`. The v2 path is required by Go for v2+ tags.
 
 ```
-cmd/permidex/        main: `permidex <provider>` browses, `-r` refreshes that provider's cache
+cmd/permidex/        main: `permidex <provider>` browses, `--refresh|-r` refreshes that provider's cache
 internal/browse/     shared bubbletea browser: search, sections, drill-down, selection, YAML output. Knows nothing about providers
 internal/gcp/        GCP provider: cache file, refresh, and the browse.Source implementation
 internal/iam/        GCP fetch: paged roles.list, ADC client
@@ -124,10 +124,10 @@ Releases: GoReleaser. Ship darwin and linux, amd64 and arm64.
 1. `go mod init`, `mise.toml`, `.golangci.yaml`, `.gitignore`.
 2. Manual check: one `curl` with a token from `gcloud auth application-default print-access-token`. Confirm the response shape and `includedPermissions`. Save a small `testdata/roles.json`.
 3. `internal/iam` fetch, paged, with fake-server tests.
-4. `internal/cache` and `permidex gcp -r`.
+4. `internal/cache` and `permidex gcp --refresh|-r`.
 5. `internal/index` with tests.
 6. `internal/browse`: list, search, detail, pivots, back stack.
-7. README: install, `permidex gcp -r`, keys.
+7. README: install, `permidex gcp --refresh|-r`, keys.
 
 ## 10. v1.1.0: fuzzy search
 
