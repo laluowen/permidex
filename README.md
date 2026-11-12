@@ -7,7 +7,7 @@ Browse GCP predefined IAM roles and permissions in the terminal. Find which role
 Build from source (Go 1.27+):
 
 ```sh
-go install github.com/lalu-uk/permidex/cmd/permidex@latest
+go install github.com/laluowen/permidex/cmd/permidex@latest
 ```
 
 Or download a release archive for darwin or linux (amd64, arm64) and put `permidex` on your `PATH`.

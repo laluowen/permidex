@@ -8,8 +8,8 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/lalu-uk/permidex/internal/iam"
-	"github.com/lalu-uk/permidex/internal/index"
+	"github.com/laluowen/permidex/internal/iam"
+	"github.com/laluowen/permidex/internal/index"
 )
 
 const (

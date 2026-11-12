@@ -53,7 +53,7 @@ Not in the MVP. A `go:embed` snapshot plus a nightly CI refresh would make the b
 
 ## 4. Architecture
 
-Module: `github.com/lalu-uk/permidex`.
+Module: `github.com/laluowen/permidex`.
 
 ```
 cmd/permidex/        main: subcommands `refresh` and default TUI
@@ -112,7 +112,7 @@ Every pivot pushes the previous list and filter onto a stack. `esc` pops. This f
 - `github:golangci/golangci-lint`: pinned exact
 - `github:goreleaser/goreleaser` or `aqua:` only if no `github:` source works
 
-Releases: GoReleaser, draft then publish (lalu-uk org rules: immutable releases, actions pinned by SHA). Ship darwin and linux, amd64 and arm64.
+Releases: GoReleaser. Ship darwin and linux, amd64 and arm64.
 
 ## 8. Open questions
 

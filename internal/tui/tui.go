@@ -9,7 +9,7 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/lalu-uk/permidex/internal/index"
+	"github.com/laluowen/permidex/internal/index"
 )
 
 const (

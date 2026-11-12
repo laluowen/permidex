@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/lalu-uk/permidex/internal/index"
+	"github.com/laluowen/permidex/internal/index"
 )
 
 // Selection returns the picked items as YAML, or "" unless the session ended with ctrl+q.

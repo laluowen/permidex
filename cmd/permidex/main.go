@@ -9,10 +9,10 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/lalu-uk/permidex/internal/cache"
-	"github.com/lalu-uk/permidex/internal/iam"
-	"github.com/lalu-uk/permidex/internal/index"
-	"github.com/lalu-uk/permidex/internal/tui"
+	"github.com/laluowen/permidex/internal/cache"
+	"github.com/laluowen/permidex/internal/iam"
+	"github.com/laluowen/permidex/internal/index"
+	"github.com/laluowen/permidex/internal/tui"
 )
 
 func main() {

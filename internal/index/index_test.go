@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/lalu-uk/permidex/internal/iam"
+	"github.com/laluowen/permidex/internal/iam"
 )
 
 const computeGet = "compute.instances.get"
