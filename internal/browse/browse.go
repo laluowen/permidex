@@ -40,7 +40,6 @@ type Model struct {
 	counts   map[string]int
 	height   int
 	width    int
-	help     bool
 	picked   map[Item]bool
 	emit     bool
 }
@@ -117,15 +116,9 @@ func (m *Model) key(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if s == keyCtrlC {
 		return m, tea.Quit
 	}
-	if s == keyCtrlQ && !m.help {
+	if s == keyCtrlQ {
 		m.emit = true
 		return m, tea.Quit
-	}
-	if m.help {
-		if s == "?" || s == keyEsc {
-			m.help = false
-		}
-		return m, nil
 	}
 
 	for i, sec := range m.sections {
@@ -137,8 +130,6 @@ func (m *Model) key(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 
 	switch s {
-	case "?":
-		m.help = true
 	case keyEsc:
 		if m.input.Value() != "" {
 			m.setFilter("")
@@ -155,7 +146,11 @@ func (m *Model) key(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 	case keyEnter:
 		m.open()
-	case "ctrl+o", "home":
+	case "home":
+		m.cur.cursor = 0
+	case "end":
+		m.cur.cursor = len(m.shown)
+	case "ctrl+o":
 		m.stack = nil
 		m.cur = frame{View: m.src.Root()}
 		m.setFilter("")
@@ -267,11 +262,7 @@ func (m *Model) selected() (Item, bool) {
 
 // View implements tea.Model.
 func (m *Model) View() tea.View {
-	body := m.listView()
-	if m.help {
-		body = m.helpView()
-	}
-	v := tea.NewView(body)
+	v := tea.NewView(m.listView())
 	v.AltScreen = true
 	return v
 }
@@ -287,7 +278,7 @@ var (
 	plain       = lipgloss.NewStyle()
 )
 
-// keyHint is one key and what it does, for the hint bar and the help screen.
+// keyHint is one key and what it does, shown in the footer.
 type keyHint struct {
 	key, desc string
 }
@@ -327,33 +318,19 @@ func (m *Model) jumpHints() []keyHint {
 	return out
 }
 
-var listHints = []keyHint{
-	{"↑↓", "move"},
-	{keyEnter, "open"},
-	{"esc", "back"},
-	{keyTab, "select"},
-	{"?", "help"},
-	{keyCtrlQ, "done"},
-	{keyCtrlC, "abort"},
-}
-
-func (m *Model) helpHints() []keyHint {
+// footerHints is the bottom bar, in display order: movement, open, back, select, the section jumps,
+// the start screen, then quit.
+func (m *Model) footerHints() []keyHint {
 	hints := []keyHint{
-		{"type", "search (matches name or title)"},
-		{"↑↓ pgup pgdn", "move"},
-		{keyEnter, "open the selected item"},
-		{"esc", "back (esc clears the search first)"},
-		{"backspace", "delete"},
-		{keyTab, "select or deselect the item"},
+		{"↑↓ pgup pgdn home end", "move"},
+		{keyEnter, "open"},
+		{"esc", "back"},
+		{keyTab, "select"},
 	}
-	for _, j := range m.jumpHints() {
-		hints = append(hints, keyHint{key: j.key, desc: "jump to " + j.desc})
-	}
+	hints = append(hints, m.jumpHints()...)
 	return append(hints,
-		keyHint{keyCtrlQ, "quit and print the selection as YAML"},
-		keyHint{"ctrl+o home", "reset to the start screen"},
-		keyHint{"?", "this help"},
-		keyHint{keyCtrlC, "abort (print nothing)"},
+		keyHint{"ctrl+o", "start screen"},
+		keyHint{keyCtrlQ, "done"},
 	)
 }
 
@@ -407,7 +384,7 @@ func (m *Model) listView() string {
 	if width <= 0 {
 		width = 80
 	}
-	bar := hintLines(append(m.jumpHints(), listHints...), width)
+	bar := hintLines(m.footerHints(), width)
 	var top []string
 	top = append(top, titleStyle.Render("permidex "+m.src.Name())+dim.Render(fmt.Sprintf("  data from %s  selected %d", m.src.FetchedAt().Format(time.DateOnly), len(m.picked))))
 	top = append(top, bold.Render(m.breadcrumb()))
@@ -438,20 +415,4 @@ func (m *Model) listView() string {
 		}
 	}
 	return strings.Join(append(append(top, body...), bar...), "\n")
-}
-
-func (m *Model) helpView() string {
-	var b strings.Builder
-	b.WriteString(titleStyle.Render("keys") + "\n\n")
-	hints := m.helpHints()
-	width := 0
-	for _, h := range hints {
-		width = max(width, lipgloss.Width(h.key))
-	}
-	for _, h := range hints {
-		pad := strings.Repeat(" ", width-lipgloss.Width(h.key))
-		b.WriteString("  " + keyStyle.Render(h.key) + pad + "  " + h.desc + "\n")
-	}
-	b.WriteString("\n" + dim.Render("? or esc close"))
-	return b.String()
 }

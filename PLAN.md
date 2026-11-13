@@ -80,9 +80,9 @@ Built with Bubble Tea, `bubbles/list` or `bubbles/textinput` for search, lipglos
 | `enter` | open the selected item (drill-down view) |
 | `esc` | back (clears the search first) |
 | `backspace` | delete |
-| `ctrl+o` or `home` | reset to the start screen |
-| `?` | key help |
-| `ctrl+c` | quit |
+| `ctrl+o` | reset to the start screen |
+| `home` / `end` | top or bottom of the list |
+| `ctrl+c` | quit with no output (bound, not shown) |
 
 Navigation is drill-down: every result is selectable, and opening it shows its related items. `ctrl+j`, `ctrl+k` and `ctrl+l` jump the cursor to the first, second or third section. The same keys work for every provider.
 

@@ -110,9 +110,9 @@ func (s *Source) FetchedAt() time.Time { return s.fetched }
 // Sections implements browse.Source.
 func (s *Source) Sections() []browse.Section {
 	return []browse.Section{
-		{Kind: kindRole, Title: "Roles", Key: "roles"},
-		{Kind: kindPermission, Title: "Permissions", Key: "permissions"},
-		{Kind: kindService, Title: "Services", Key: "services"},
+		{Kind: kindRole, Title: "roles", Key: "roles"},
+		{Kind: kindPermission, Title: "permissions", Key: "permissions"},
+		{Kind: kindService, Title: "services", Key: "services"},
 	}
 }
 

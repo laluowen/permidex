@@ -61,10 +61,9 @@ Start with a blank screen and type to search roles (by ID or title), permissions
 | `tab` | select or deselect the item |
 | `ctrl+j`, `ctrl+k`, `ctrl+l` | jump to the first, second or third section (for GCP: roles, permissions, services) |
 | `↑` `↓` `pgup` `pgdn` | move |
-| `ctrl+o`, `home` | reset to the start screen |
-| `?` | key help (`?` or `esc` closes it) |
+| `home` `end` | jump to the top or bottom of the list |
+| `ctrl+o` | reset to the start screen |
 | `ctrl+q` | quit and print the selection to stdout as YAML (the TUI draws on stderr) |
-| `ctrl+c` | abort: quit and print nothing |
 
 ## Development
 
