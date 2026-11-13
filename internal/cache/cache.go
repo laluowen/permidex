@@ -13,15 +13,12 @@ import (
 // ErrMissing means no cache file exists yet.
 var ErrMissing = errors.New("no cache")
 
-// Path returns the cache file at parts under $XDG_CACHE_HOME/permidex, or ~/.cache/permidex.
+// Path returns the cache file at parts under the user's cache directory, in permidex/. That is
+// $XDG_CACHE_HOME or ~/.cache on Linux, ~/Library/Caches on macOS, and %LocalAppData% on Windows.
 func Path(parts ...string) (string, error) {
-	dir := os.Getenv("XDG_CACHE_HOME")
-	if dir == "" {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return "", fmt.Errorf("home directory: %w", err)
-		}
-		dir = filepath.Join(home, ".cache")
+	dir, err := os.UserCacheDir()
+	if err != nil {
+		return "", fmt.Errorf("cache directory: %w", err)
 	}
 	return filepath.Join(append([]string{dir, "permidex"}, parts...)...), nil
 }

@@ -9,7 +9,7 @@ description: Look up GCP predefined IAM roles and their permissions offline, fro
 
 ## Where the file is
 
-`${XDG_CACHE_HOME:-$HOME/.cache}/permidex/gcp/roles.json`
+`permidex/gcp/roles.json` in the user cache directory: `~/Library/Caches` on macOS, `${XDG_CACHE_HOME:-~/.cache}` on Linux. `permidex gcp -r` prints the exact path it wrote.
 
 Its format is defined in `gcp-roles.schema.json`, which sits in the same directory. The same schema is in the permidex repository at `schema/gcp-roles.schema.json`. It has `version` (currently `1`), `fetchedAt`, and `roles[]`. Each role has `name` (such as `roles/compute.admin`), and may have `title`, `description`, `stage` and `includedPermissions`. Empty fields are omitted.
 
@@ -31,7 +31,8 @@ Check `fetchedAt` if the data might be out of date. Refresh when it matters.
 Set `F` to the path:
 
 ```sh
-F="${XDG_CACHE_HOME:-$HOME/.cache}/permidex/gcp/roles.json"
+if [ "$(uname)" = Darwin ]; then C="$HOME/Library/Caches"; else C="${XDG_CACHE_HOME:-$HOME/.cache}"; fi
+F="$C/permidex/gcp/roles.json"
 ```
 
 Role by exact ID:

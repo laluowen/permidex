@@ -33,7 +33,7 @@ Assumed: no quota project is needed. Confirm in step 2.
 
 ### Cache
 
-- Path: `$XDG_CACHE_HOME/permidex/gcp/roles.json`, falling back to `~/.cache/permidex/gcp/roles.json`. Each provider has its own directory.
+- Path: `permidex/gcp/roles.json` under `os.UserCacheDir()`: `~/Library/Caches` on macOS, `$XDG_CACHE_HOME` or `~/.cache` on Linux. Each provider has its own directory.
 - Written by `permidex gcp --refresh|-r`, read by `permidex gcp`. The file has a `version`; a mismatch is refused with a refresh hint.
 - Write to a temp file, then rename (atomic).
 - Store the fetch time. The TUI shows "data from <date>" in the header.
