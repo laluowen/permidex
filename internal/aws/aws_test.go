@@ -1,0 +1,83 @@
+package aws
+
+import (
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"strings"
+	"testing"
+)
+
+// serve starts a server that answers the index and the s3 document from testdata. The index URLs point
+// back at the server, as the real index's do.
+func serve(t *testing.T) *httptest.Server {
+	t.Helper()
+	index, err := os.ReadFile("testdata/index.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s3, err := os.ReadFile("testdata/s3.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/":
+			_, _ = w.Write([]byte(strings.ReplaceAll(string(index), "{BASE}", srv.URL)))
+		case "/v1/s3/s3.json":
+			_, _ = w.Write(s3)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+func TestIndexListsServices(t *testing.T) {
+	srv := serve(t)
+	entries, err := Client{HTTP: srv.Client(), IndexURL: srv.URL + "/"}.Index(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 2 {
+		t.Fatalf("index = %+v", entries)
+	}
+	var s3 IndexEntry
+	for _, e := range entries {
+		if e.Service == "s3" {
+			s3 = e
+		}
+	}
+	if s3.ServiceName != "S3" || !strings.HasPrefix(s3.URL, srv.URL) {
+		t.Errorf("s3 entry = %+v, want ServiceName S3 under the test server", s3)
+	}
+}
+
+func TestServiceDocumentParsesActionsAndAnnotations(t *testing.T) {
+	srv := serve(t)
+	c := Client{HTTP: srv.Client()}
+	doc, err := c.Service(t.Context(), srv.URL+"/v1/s3/s3.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if doc.Name != "s3" || doc.ServiceName != "S3" || len(doc.Actions) != 3 {
+		t.Fatalf("doc = %s/%s with %d actions", doc.Name, doc.ServiceName, len(doc.Actions))
+	}
+	abort := doc.Actions[0]
+	if abort.Name != "AbortMultipartUpload" || !abort.Annotations.Properties.IsWrite || !abort.Annotations.Properties.IsDataPlane {
+		t.Errorf("AbortMultipartUpload annotations = %+v", abort.Annotations.Properties)
+	}
+}
+
+func TestHTTPErrorIsReported(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "gone", http.StatusNotFound)
+	}))
+	defer srv.Close()
+	_, err := Client{HTTP: srv.Client(), IndexURL: srv.URL}.Index(t.Context())
+	if err == nil || !strings.Contains(err.Error(), "404") {
+		t.Fatalf("err = %v, want a 404", err)
+	}
+}
