@@ -1,4 +1,4 @@
 [tools]
 "core:go" = "1.27.4"
 "github:golangci/golangci-lint" = "2.15.0"
-"github:goreleaser/goreleaser" = "2.20.1"
+"github:goreleaser/goreleaser" = "2.20.2"
