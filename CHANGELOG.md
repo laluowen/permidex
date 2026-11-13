@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.1.0](https://github.com/laluowen/permidex/compare/v2.0.0...v2.1.0) (2026-11-13)
+
+
+### Features
+
+* **browse:** footer carries every key; drop help screen; home/end move to top and bottom ([14c9f9a](https://github.com/laluowen/permidex/commit/14c9f9af8856eecca8f582b82a83388806131591))
+* **browse:** footer carries every key; drop the help screen ([eab21d6](https://github.com/laluowen/permidex/commit/eab21d666f4503a580b2877eec50fc3005772b6e))
+* **browse:** footer order: move, open, back, select, sections, start screen, done ([2ddcc6c](https://github.com/laluowen/permidex/commit/2ddcc6c0374a13953b5d9a9e7018d3fa5707cee7))
+
 ## [2.0.0](https://github.com/laluowen/permidex/compare/v1.0.0...v2.0.0) (2026-11-12)
 
 
