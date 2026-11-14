@@ -74,6 +74,12 @@ A full refresh is about 2,000 calls. Two things would cut that down:
 - **Incremental refresh:** reuse a cached policy document when its `DefaultVersionId` hasn't changed, and refetch a service document only when its `modified` timestamp changes.
 - **A shared snapshot:** CI publishes the catalogue as a versioned release asset, and `permidex aws --fetch` downloads it, opt-in. The public service reference needs no credentials, so CI can do that part. Policies need an IAM read identity in CI, which is an access decision, so it needs sign-off first.
 
+## Tabled: pull the release artifact instead of a full refresh
+
+A first run currently means a full refresh. A flag such as `permidex aws --pull` (and `permidex gcp --pull`) would download the latest release's artifact instead, then the normal delta refresh brings it up to date. It saves the first-run cost and needs no credentials for the public part.
+
+It comes with trust: the artifact is whatever CI published, so the flag should verify a checksum from the same release and say where the data came from. Convenience costs, so it stays opt-in.
+
 ## Steps
 
 1. `internal/aws`: service reference fetch (public, no auth), with tests against recorded JSON in `testdata/`.
