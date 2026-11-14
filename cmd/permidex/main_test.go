@@ -13,7 +13,7 @@ func TestProviderFirst(t *testing.T) {
 	}{
 		{[]string{prov, "-r"}, []string{prov, "-r"}},
 		{[]string{"-r", prov}, []string{prov, "-r"}},
-		{[]string{"--refresh", prov}, []string{prov, "--refresh"}},
+		{[]string{flagRefresh, prov}, []string{prov, flagRefresh}},
 		{[]string{prov}, []string{prov}},
 		{[]string{"-r"}, []string{"-r"}},
 		{nil, nil},
