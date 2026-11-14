@@ -80,6 +80,10 @@ A first run currently means a full refresh. A flag such as `permidex aws --pull`
 
 It comes with trust: the artifact is whatever CI published, so the flag should verify a checksum from the same release and say where the data came from. Convenience costs, so it stays opt-in.
 
+## Idea, not planned: interrupt tolerance and resumable refresh
+
+A full refresh takes minutes, and an interrupted one currently starts over. Checkpointing the cache after each batch would let a refresh resume. It adds state and complexity, so it waits until a full refresh is interrupted often enough to matter. The delta refresh already makes most runs short.
+
 ## Steps
 
 1. `internal/aws`: service reference fetch (public, no auth), with tests against recorded JSON in `testdata/`.
