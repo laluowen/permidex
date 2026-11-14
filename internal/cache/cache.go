@@ -13,17 +13,18 @@ import (
 // ErrMissing means no cache file exists yet.
 var ErrMissing = errors.New("no cache")
 
-// Path returns the cache file at parts under $XDG_CACHE_HOME/permidex, or ~/.cache/permidex.
+// Path returns the cache file at parts. The directory is $PERMIDEX_CACHE_DIR if set. Otherwise it is
+// permidex/ under the user's cache directory: $XDG_CACHE_HOME or ~/.cache on Linux, ~/Library/Caches on macOS.
 func Path(parts ...string) (string, error) {
-	dir := os.Getenv("XDG_CACHE_HOME")
+	dir := os.Getenv("PERMIDEX_CACHE_DIR")
 	if dir == "" {
-		home, err := os.UserHomeDir()
+		base, err := os.UserCacheDir()
 		if err != nil {
-			return "", fmt.Errorf("home directory: %w", err)
+			return "", fmt.Errorf("cache directory: %w", err)
 		}
-		dir = filepath.Join(home, ".cache")
+		dir = filepath.Join(base, "permidex")
 	}
-	return filepath.Join(append([]string{dir, "permidex"}, parts...)...), nil
+	return filepath.Join(append([]string{dir}, parts...)...), nil
 }
 
 // WriteJSON replaces path atomically with v encoded as indented JSON.

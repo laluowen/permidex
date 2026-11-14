@@ -73,13 +73,27 @@ func TestReadCorrupt(t *testing.T) {
 	}
 }
 
-func TestPathUsesXDGCacheHome(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", "/xdg")
+func TestPathIsUnderUserCacheDir(t *testing.T) {
+	dir, err := os.UserCacheDir()
+	if err != nil {
+		t.Fatal(err)
+	}
 	got, err := Path("gcp", "roles.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := "/xdg/permidex/gcp/roles.json"; got != want {
+	if want := filepath.Join(dir, "permidex", "gcp", "roles.json"); got != want {
+		t.Errorf("Path = %q, want %q", got, want)
+	}
+}
+
+func TestPathHonoursPermidexCacheDir(t *testing.T) {
+	t.Setenv("PERMIDEX_CACHE_DIR", "/custom/cache")
+	got, err := Path("aws", "catalogue.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "/custom/cache/aws/catalogue.json"; got != want {
 		t.Errorf("Path = %q, want %q", got, want)
 	}
 }
