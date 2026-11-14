@@ -44,6 +44,17 @@ The cache is `$XDG_CACHE_HOME/permidex/gcp/roles.json`, or `~/.cache/permidex/gc
 
 Upgrading from 1.x: the command is now `permidex gcp`, and `permidex refresh` is `permidex gcp --refresh|-r`. The cache moved to `gcp/roles.json`, so run `permidex gcp --refresh|-r` once.
 
+### AWS
+
+Authenticate with the standard AWS credential chain (environment variables, shared config, SSO or an instance role). The refresh reads IAM (`ListPolicies`, `GetPolicy`, `GetPolicyVersion`) and the public service reference. It doesn't write anything to AWS.
+
+```sh
+permidex aws --refresh|-r   # refresh the cache from AWS
+permidex aws                # browse AWS actions, managed policies and services
+```
+
+The refresh takes a few minutes: it reads every AWS-managed policy and every service document. The cache is `permidex/aws/catalogue.json` under your cache directory.
+
 ## Agents
 
 The cache is plain JSON, so agents and scripts can query it directly. [`skills/permidex-gcp`](./skills/permidex-gcp/SKILL.md) is an agent skill with `jq` recipes. The format is defined in [`schema/gcp-roles.schema.json`](./schema/gcp-roles.schema.json).
