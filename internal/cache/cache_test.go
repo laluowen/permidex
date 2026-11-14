@@ -86,3 +86,14 @@ func TestPathIsUnderUserCacheDir(t *testing.T) {
 		t.Errorf("Path = %q, want %q", got, want)
 	}
 }
+
+func TestPathHonoursPermidexCacheDir(t *testing.T) {
+	t.Setenv("PERMIDEX_CACHE_DIR", "/custom/cache")
+	got, err := Path("aws", "catalogue.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "/custom/cache/aws/catalogue.json"; got != want {
+		t.Errorf("Path = %q, want %q", got, want)
+	}
+}
