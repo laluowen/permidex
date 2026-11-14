@@ -1,6 +1,8 @@
 # PLAN-aws.md: `permidex aws`
 
-Status: planned, not started. Starts after the shared-browser refactor (branch `refactor/provider-shared-tui`) lands.
+Status: in progress on `feat/aws`. Done: service reference fetch, managed policy read, wildcard expansion, cache, browser source and `permidex aws`. Still to do: incremental refresh (reuse policy versions and service documents that haven't changed), schema for the AWS cache, the AWS skill, and a timing and size check on a full refresh.
+
+Later: publish a canonical snapshot as a release asset, as noted under "Timing and shared data" below.
 
 ## Goal
 
@@ -65,6 +67,12 @@ AWS default credential chain (environment, shared config, SSO, instance role). T
 2. **Customer-managed policies:** out of scope for v1 (`Scope=AWS` only). Confirm that's wanted.
 3. **Refresh cost:** `GetPolicyVersion` per policy. Probably fine, since it's cached, but check the throttling behaviour once it's implemented.
 4. **Wildcard display:** a policy that uses `s3:*` lists every expanded action. Show the pattern in the policy's actions, and the expanded set in the action lookup, or just the expansion?
+
+## Timing and shared data
+
+A full refresh is about 2,000 calls. Two things would cut that down:
+- **Incremental refresh:** reuse a cached policy document when its `DefaultVersionId` hasn't changed, and refetch a service document only when its `modified` timestamp changes.
+- **A shared snapshot:** CI publishes the catalogue as a versioned release asset, and `permidex aws --fetch` downloads it, opt-in. The public service reference needs no credentials, so CI can do that part. Policies need an IAM read identity in CI, which is an access decision, so it needs sign-off first.
 
 ## Steps
 
