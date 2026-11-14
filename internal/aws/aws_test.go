@@ -150,3 +150,27 @@ func TestClientErrorsAreNotRetried(t *testing.T) {
 		t.Errorf("a 404 was attempted %d times, want once", calls)
 	}
 }
+
+func TestUnchangedServiceIsNotRequested(t *testing.T) {
+	requested := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requested++
+		http.Error(w, "should not be called", http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	entries := []IndexEntry{{Service: "s3", URL: srv.URL + "/v1/s3/s3.json", Modified: 100}}
+	prev := map[string]CacheService{
+		"s3": {Name: "s3", ServiceName: "S3", Actions: []string{"s3:GetObject", testS3List}, Modified: 100},
+	}
+	docs, err := fetchDocuments(t.Context(), Client{HTTP: srv.Client()}, entries, prev, nil)
+	if err != nil {
+		t.Fatalf("unchanged service should come from the cache: %v", err)
+	}
+	if requested != 0 {
+		t.Errorf("made %d requests for an unchanged service, want none", requested)
+	}
+	if len(docs) != 1 || len(docs[0].Actions) != 2 || docs[0].Actions[0].Name != "GetObject" {
+		t.Errorf("docs = %+v, want the cached actions with the prefix stripped", docs)
+	}
+}

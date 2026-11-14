@@ -43,6 +43,8 @@ type IndexEntry struct {
 	Service     string `json:"service"`
 	ServiceName string `json:"serviceName"`
 	URL         string `json:"url"`
+	// Modified is when the service's document last changed, as a Unix timestamp. Used for deltas.
+	Modified int64 `json:"modified"`
 }
 
 // Action is one IAM action of a service. Name is unprefixed: the full action is Service + ":" + Name.

@@ -63,7 +63,7 @@ func TestPoliciesPaginatesAndReadsEachPolicy(t *testing.T) {
 			arnView: encode(`{"Statement":{"Effect":"Allow","Action":"ec2:Describe*"}}`),
 		},
 	}
-	got, err := Policies(t.Context(), api, sampleCatalogue(), nil)
+	got, err := Policies(t.Context(), api, sampleCatalogue(), nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,7 +89,7 @@ func TestOnlyAllowStatementsCount(t *testing.T) {
 			{"Effect":"Allow","Action":"s3:GetObject"}
 		]}`)},
 	}
-	got, err := Policies(t.Context(), api, sampleCatalogue(), nil)
+	got, err := Policies(t.Context(), api, sampleCatalogue(), nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,7 +103,7 @@ func TestNotActionIsFlagged(t *testing.T) {
 		pages: [][]PolicyRef{{{Name: "Not", ARN: "arn:not", DefaultVersionID: "v1"}}},
 		docs:  map[string]string{"arn:not": encode(`{"Statement":[{"Effect":"Allow","NotAction":"iam:*"}]}`)},
 	}
-	got, err := Policies(t.Context(), api, sampleCatalogue(), nil)
+	got, err := Policies(t.Context(), api, sampleCatalogue(), nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +118,7 @@ func TestProgressAndErrors(t *testing.T) {
 		docs:  map[string]string{arnA: encode(`{"Statement":[]}`)},
 	}
 	var seen []int
-	if _, err := Policies(t.Context(), api, sampleCatalogue(), func(n int) { seen = append(seen, n) }); err != nil {
+	if _, err := Policies(t.Context(), api, sampleCatalogue(), nil, func(n int) { seen = append(seen, n) }); err != nil {
 		t.Fatal(err)
 	}
 	if !slices.Equal(seen, []int{1}) {
@@ -129,7 +129,7 @@ func TestProgressAndErrors(t *testing.T) {
 		pages:   [][]PolicyRef{{{Name: "A", ARN: arnA, DefaultVersionID: "v1"}}},
 		failDoc: true,
 	}
-	if _, err := Policies(t.Context(), failing, sampleCatalogue(), nil); err == nil {
+	if _, err := Policies(t.Context(), failing, sampleCatalogue(), nil, nil); err == nil {
 		t.Error("a failed document read should be an error")
 	}
 }
@@ -139,12 +139,46 @@ func TestGrantsExpandPatterns(t *testing.T) {
 		pages: [][]PolicyRef{{{Name: "Ro", ARN: arnRO, DefaultVersionID: "v1"}}},
 		docs:  map[string]string{arnRO: encode(`{"Statement":[{"Effect":"Allow","Action":["s3:Get*","ec2:DescribeVolumes"]}]}`)},
 	}
-	got, err := Policies(t.Context(), api, sampleCatalogue(), nil)
+	got, err := Policies(t.Context(), api, sampleCatalogue(), nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := []string{"ec2:DescribeVolumes", s3GetBucketPolicy, s3GetObject}
 	if !slices.Equal(got[0].Grants, want) {
 		t.Errorf("grants = %v, want %v", got[0].Grants, want)
+	}
+}
+
+func TestUnchangedPolicyIsReusedWithoutRequests(t *testing.T) {
+	api := &fakeIAM{
+		pages:   [][]PolicyRef{{{Name: policyRO, ARN: arnRO, DefaultVersionID: "v3"}}},
+		failDoc: true,
+	}
+	prev := map[string]Policy{policyRO: {
+		Name: policyRO, ARN: arnRO, Version: "v3", Description: readOnlyDesc,
+		Actions: []string{s3GetWildcard},
+	}}
+	got, err := Policies(t.Context(), api, sampleCatalogue(), prev, nil)
+	if err != nil {
+		t.Fatalf("an unchanged policy should not call the API: %v", err)
+	}
+	if got[0].Description != readOnlyDesc || !slices.Equal(got[0].Grants, []string{s3GetBucketPolicy, s3GetObject}) {
+		t.Errorf("reused policy = %+v", got[0])
+	}
+}
+
+func TestChangedPolicyVersionIsFetched(t *testing.T) {
+	api := &fakeIAM{
+		pages: [][]PolicyRef{{{Name: policyRO, ARN: arnRO, DefaultVersionID: "v4"}}},
+		desc:  map[string]string{arnRO: "new description"},
+		docs:  map[string]string{arnRO: encode(`{"Statement":[{"Effect":"Allow","Action":"s3:GetObject"}]}`)},
+	}
+	prev := map[string]Policy{policyRO: {Name: policyRO, ARN: arnRO, Version: "v3", Description: readOnlyDesc}}
+	got, err := Policies(t.Context(), api, sampleCatalogue(), prev, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got[0].Description != "new description" || got[0].Version != "v4" {
+		t.Errorf("changed policy = %+v, want the new description and version", got[0])
 	}
 }

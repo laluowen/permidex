@@ -48,7 +48,7 @@ const policyWorkers = 8
 
 // Policies lists every AWS-managed policy and reads its default version, several at a time. progress, if
 // set, is called after each policy with the count so far, from any goroutine.
-func Policies(ctx context.Context, api PolicyAPI, cat Catalogue, progress func(done int)) ([]Policy, error) {
+func Policies(ctx context.Context, api PolicyAPI, cat Catalogue, prev map[string]Policy, progress func(done int)) ([]Policy, error) {
 	var refs []PolicyRef
 	marker := ""
 	for {
@@ -69,7 +69,7 @@ func Policies(ctx context.Context, api PolicyAPI, cat Catalogue, progress func(d
 	var done atomic.Int64
 	for i, ref := range refs {
 		g.Go(func() error {
-			p, err := readPolicy(gctx, api, cat, ref)
+			p, err := readPolicy(gctx, api, cat, prev, ref)
 			if err != nil {
 				return err
 			}
@@ -86,7 +86,28 @@ func Policies(ctx context.Context, api PolicyAPI, cat Catalogue, progress func(d
 	return out, nil
 }
 
-func readPolicy(ctx context.Context, api PolicyAPI, cat Catalogue, ref PolicyRef) (Policy, error) {
+// readPolicy builds one policy. If the previous cache has the same version, its description and actions are
+// reused and no request is made. Grants are always expanded against the current catalogue, because a service
+// change can alter a wildcard's expansion without the policy changing.
+func readPolicy(ctx context.Context, api PolicyAPI, cat Catalogue, prev map[string]Policy, ref PolicyRef) (Policy, error) {
+	p, ok := prev[ref.Name]
+	if !ok || p.Version != ref.DefaultVersionID || p.ARN != ref.ARN {
+		var err error
+		p, err = fetchPolicy(ctx, api, ref)
+		if err != nil {
+			return Policy{}, err
+		}
+	}
+	var grants []string
+	for _, pat := range p.Actions {
+		grants = append(grants, cat.Expand(pat)...)
+	}
+	p.Grants = slices.Compact(slices.Sorted(slices.Values(grants)))
+	return p, nil
+}
+
+// fetchPolicy reads a policy's description and default version document, with the API.
+func fetchPolicy(ctx context.Context, api PolicyAPI, ref PolicyRef) (Policy, error) {
 	desc, err := api.Description(ctx, ref.ARN)
 	if err != nil {
 		return Policy{}, fmt.Errorf("get policy %s: %w", ref.ARN, err)
@@ -99,17 +120,12 @@ func readPolicy(ctx context.Context, api PolicyAPI, cat Catalogue, ref PolicyRef
 	if err != nil {
 		return Policy{}, fmt.Errorf("parse %s: %w", ref.ARN, err)
 	}
-	var grants []string
-	for _, pat := range actions {
-		grants = append(grants, cat.Expand(pat)...)
-	}
 	return Policy{
 		Name:         ref.Name,
 		ARN:          ref.ARN,
 		Description:  desc,
 		Version:      ref.DefaultVersionID,
 		Actions:      actions,
-		Grants:       slices.Compact(slices.Sorted(slices.Values(grants))),
 		HasNotAction: notAction,
 	}, nil
 }
