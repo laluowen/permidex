@@ -52,9 +52,21 @@ func wantsCacheDir(args []string) bool {
 	return slices.ContainsFunc(args, func(a string) bool { return a == "-c" || a == "--cache-dir" })
 }
 
+// cacheDirectory resolves the cache directory. An ignored XDG_CACHE_HOME is reported as a warning on stderr.
+func cacheDirectory() (string, error) {
+	dir, warning, err := cache.Resolve()
+	if err != nil {
+		return "", err
+	}
+	if warning != "" {
+		fmt.Fprintln(os.Stderr, "permidex: warning:", warning)
+	}
+	return dir, nil
+}
+
 func run(ctx context.Context, args []string) error {
 	if wantsCacheDir(args) {
-		dir, err := cache.Dir()
+		dir, err := cacheDirectory()
 		if err != nil {
 			return err
 		}
@@ -92,6 +104,9 @@ func gcpCmd(ctx context.Context, args []string) error {
 	}
 	if fs.NArg() > 0 {
 		return fmt.Errorf("unexpected argument %q (see `permidex help`)", fs.Arg(0))
+	}
+	if _, err := cacheDirectory(); err != nil {
+		return err
 	}
 	path, err := gcp.CachePath()
 	if err != nil {

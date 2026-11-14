@@ -133,3 +133,35 @@ func TestRelativePermidexCacheDirIsAnError(t *testing.T) {
 		t.Errorf("err = %v, want a PERMIDEX_CACHE_DIR error even with an absolute XDG set", err)
 	}
 }
+
+func TestResolveWarnsWhenXDGIsIgnored(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("PERMIDEX_CACHE_DIR", "")
+	t.Setenv("XDG_CACHE_HOME", "relative/cache")
+	dir, warning, err := Resolve()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := filepath.Join(home, ".cache", "permidex"); dir != want {
+		t.Errorf("dir = %q, want %q", dir, want)
+	}
+	if warning == "" {
+		t.Error("an ignored XDG_CACHE_HOME should produce a warning")
+	}
+}
+
+func TestResolveNoWarningForValidXDG(t *testing.T) {
+	t.Setenv("PERMIDEX_CACHE_DIR", "")
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	if _, warning, err := Resolve(); err != nil || warning != "" {
+		t.Errorf("valid XDG: warning %q, err %v", warning, err)
+	}
+}
+
+func TestResolveInvalidPermidexIsAnError(t *testing.T) {
+	t.Setenv("PERMIDEX_CACHE_DIR", "rel/cache")
+	if _, _, err := Resolve(); err == nil || !strings.Contains(err.Error(), "PERMIDEX_CACHE_DIR") {
+		t.Errorf("err = %v, want a PERMIDEX_CACHE_DIR error", err)
+	}
+}

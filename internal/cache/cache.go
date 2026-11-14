@@ -13,34 +13,37 @@ import (
 // ErrMissing means no cache file exists yet.
 var ErrMissing = errors.New("no cache")
 
-// Path returns the cache file at parts, in the directory Dir returns.
+// Path returns the cache file at parts, in the directory Resolve chooses.
 func Path(parts ...string) (string, error) {
-	dir, err := Dir()
+	dir, _, err := Resolve()
 	if err != nil {
 		return "", err
 	}
 	return filepath.Join(append([]string{dir}, parts...)...), nil
 }
 
-// Dir is the permidex cache directory: $PERMIDEX_CACHE_DIR if set, else $XDG_CACHE_HOME/permidex if
-// XDG_CACHE_HOME is an absolute path, else ~/.cache/permidex. PERMIDEX_CACHE_DIR is ours, so a relative
-// value is an error. XDG_CACHE_HOME is the XDG spec's variable, so a relative value is ignored, as the spec
-// says. An empty variable counts as unset.
-func Dir() (string, error) {
+// Resolve returns the cache directory. $PERMIDEX_CACHE_DIR wins if set, and must be an absolute path: a
+// relative value is an error. Otherwise $XDG_CACHE_HOME/permidex is used if XDG_CACHE_HOME is an absolute
+// path. An invalid XDG_CACHE_HOME is ignored, as the XDG spec says, and warning says so. Otherwise the
+// directory is ~/.cache/permidex. An empty variable counts as unset.
+func Resolve() (dir, warning string, err error) {
 	if d := os.Getenv("PERMIDEX_CACHE_DIR"); d != "" {
 		if !filepath.IsAbs(d) {
-			return "", fmt.Errorf("PERMIDEX_CACHE_DIR must be an absolute path, got %q", d)
+			return "", "", fmt.Errorf("PERMIDEX_CACHE_DIR must be an absolute path, got %q", d)
 		}
-		return d, nil
+		return d, "", nil
 	}
-	if d := os.Getenv("XDG_CACHE_HOME"); d != "" && filepath.IsAbs(d) {
-		return filepath.Join(d, "permidex"), nil
+	if d := os.Getenv("XDG_CACHE_HOME"); d != "" {
+		if filepath.IsAbs(d) {
+			return filepath.Join(d, "permidex"), "", nil
+		}
+		warning = "ignoring invalid XDG_CACHE_HOME"
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return "", fmt.Errorf("home directory: %w", err)
+		return "", "", fmt.Errorf("home directory: %w", err)
 	}
-	return filepath.Join(home, ".cache", "permidex"), nil
+	return filepath.Join(home, ".cache", "permidex"), warning, nil
 }
 
 // WriteJSON replaces path atomically with v encoded as indented JSON.
