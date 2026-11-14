@@ -13,18 +13,18 @@ import (
 // ErrMissing means no cache file exists yet.
 var ErrMissing = errors.New("no cache")
 
-// Path returns the cache file at parts, in the directory cacheDir chooses.
+// Path returns the cache file at parts, in the directory Dir returns.
 func Path(parts ...string) (string, error) {
-	dir, err := cacheDir()
+	dir, err := Dir()
 	if err != nil {
 		return "", err
 	}
 	return filepath.Join(append([]string{dir}, parts...)...), nil
 }
 
-// cacheDir is $PERMIDEX_CACHE_DIR if set, else $XDG_CACHE_HOME/permidex if XDG_CACHE_HOME is set to an
+// Dir is the permidex cache directory. It is $PERMIDEX_CACHE_DIR if set, else $XDG_CACHE_HOME/permidex if XDG_CACHE_HOME is set to an
 // absolute path (the XDG spec ignores relative ones), else ~/.cache/permidex. The same on every platform.
-func cacheDir() (string, error) {
+func Dir() (string, error) {
 	if d := os.Getenv("PERMIDEX_CACHE_DIR"); d != "" {
 		return filepath.Abs(d)
 	}

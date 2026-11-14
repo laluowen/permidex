@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -19,10 +20,11 @@ import (
 const usage = `usage: permidex <provider> [--refresh|-r]
 
 providers:
-  gcp           browse GCP predefined IAM roles and permissions
+  gcp             browse GCP predefined IAM roles and permissions
 
 options:
-  --refresh|-r  refresh that provider's cache from the cloud instead of browsing
+  --refresh|-r    refresh that provider's cache from the cloud instead of browsing
+  --cache-dir|-c  print the cache directory and exit
 
 Run "permidex <provider> --refresh|-r" once before browsing.`
 
@@ -45,7 +47,20 @@ func providerFirst(args []string) []string {
 	return args
 }
 
+// wantsCacheDir reports whether the arguments ask for the cache directory, with --cache-dir or -c.
+func wantsCacheDir(args []string) bool {
+	return slices.ContainsFunc(args, func(a string) bool { return a == "-c" || a == "--cache-dir" })
+}
+
 func run(ctx context.Context, args []string) error {
+	if wantsCacheDir(args) {
+		dir, err := cache.Dir()
+		if err != nil {
+			return err
+		}
+		fmt.Println(dir)
+		return nil
+	}
 	args = providerFirst(args)
 	if len(args) == 0 {
 		fmt.Fprintln(os.Stderr, usage)
