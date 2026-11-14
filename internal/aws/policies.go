@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"slices"
 )
 
 // PolicyRef is a managed policy as ListPolicies returns it.
@@ -33,13 +34,15 @@ type Policy struct {
 	Description string
 	Version     string
 	Actions     []string
+	// Grants is every known action the Actions patterns cover, expanded against the catalogue.
+	Grants []string
 	// HasNotAction is set when the document uses NotAction, which v1 does not expand.
 	HasNotAction bool
 }
 
 // Policies lists every AWS-managed policy and reads its default version. progress, if set, is called
 // after each policy with the count so far.
-func Policies(ctx context.Context, api PolicyAPI, progress func(done int)) ([]Policy, error) {
+func Policies(ctx context.Context, api PolicyAPI, cat Catalogue, progress func(done int)) ([]Policy, error) {
 	var refs []PolicyRef
 	marker := ""
 	for {
@@ -56,7 +59,7 @@ func Policies(ctx context.Context, api PolicyAPI, progress func(done int)) ([]Po
 
 	out := make([]Policy, 0, len(refs))
 	for i, ref := range refs {
-		p, err := readPolicy(ctx, api, ref)
+		p, err := readPolicy(ctx, api, cat, ref)
 		if err != nil {
 			return nil, err
 		}
@@ -68,7 +71,7 @@ func Policies(ctx context.Context, api PolicyAPI, progress func(done int)) ([]Po
 	return out, nil
 }
 
-func readPolicy(ctx context.Context, api PolicyAPI, ref PolicyRef) (Policy, error) {
+func readPolicy(ctx context.Context, api PolicyAPI, cat Catalogue, ref PolicyRef) (Policy, error) {
 	desc, err := api.Description(ctx, ref.ARN)
 	if err != nil {
 		return Policy{}, fmt.Errorf("get policy %s: %w", ref.ARN, err)
@@ -81,12 +84,17 @@ func readPolicy(ctx context.Context, api PolicyAPI, ref PolicyRef) (Policy, erro
 	if err != nil {
 		return Policy{}, fmt.Errorf("parse %s: %w", ref.ARN, err)
 	}
+	var grants []string
+	for _, pat := range actions {
+		grants = append(grants, cat.Expand(pat)...)
+	}
 	return Policy{
 		Name:         ref.Name,
 		ARN:          ref.ARN,
 		Description:  desc,
 		Version:      ref.DefaultVersionID,
 		Actions:      actions,
+		Grants:       slices.Compact(slices.Sorted(slices.Values(grants))),
 		HasNotAction: notAction,
 	}, nil
 }

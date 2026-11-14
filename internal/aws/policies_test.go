@@ -63,7 +63,7 @@ func TestPoliciesPaginatesAndReadsEachPolicy(t *testing.T) {
 			arnView: encode(`{"Statement":{"Effect":"Allow","Action":"ec2:Describe*"}}`),
 		},
 	}
-	got, err := Policies(t.Context(), api, nil)
+	got, err := Policies(t.Context(), api, sampleCatalogue(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,11 +89,11 @@ func TestOnlyAllowStatementsCount(t *testing.T) {
 			{"Effect":"Allow","Action":"s3:GetObject"}
 		]}`)},
 	}
-	got, err := Policies(t.Context(), api, nil)
+	got, err := Policies(t.Context(), api, sampleCatalogue(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Equal(got[0].Actions, []string{"s3:GetObject"}) {
+	if !slices.Equal(got[0].Actions, []string{s3GetObject}) {
 		t.Errorf("actions = %v, want only the Allow statement", got[0].Actions)
 	}
 }
@@ -103,7 +103,7 @@ func TestNotActionIsFlagged(t *testing.T) {
 		pages: [][]PolicyRef{{{Name: "Not", ARN: "arn:not", DefaultVersionID: "v1"}}},
 		docs:  map[string]string{"arn:not": encode(`{"Statement":[{"Effect":"Allow","NotAction":"iam:*"}]}`)},
 	}
-	got, err := Policies(t.Context(), api, nil)
+	got, err := Policies(t.Context(), api, sampleCatalogue(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +118,7 @@ func TestProgressAndErrors(t *testing.T) {
 		docs:  map[string]string{arnA: encode(`{"Statement":[]}`)},
 	}
 	var seen []int
-	if _, err := Policies(t.Context(), api, func(n int) { seen = append(seen, n) }); err != nil {
+	if _, err := Policies(t.Context(), api, sampleCatalogue(), func(n int) { seen = append(seen, n) }); err != nil {
 		t.Fatal(err)
 	}
 	if !slices.Equal(seen, []int{1}) {
@@ -129,7 +129,22 @@ func TestProgressAndErrors(t *testing.T) {
 		pages:   [][]PolicyRef{{{Name: "A", ARN: arnA, DefaultVersionID: "v1"}}},
 		failDoc: true,
 	}
-	if _, err := Policies(t.Context(), failing, nil); err == nil {
+	if _, err := Policies(t.Context(), failing, sampleCatalogue(), nil); err == nil {
 		t.Error("a failed document read should be an error")
+	}
+}
+
+func TestGrantsExpandPatterns(t *testing.T) {
+	api := &fakeIAM{
+		pages: [][]PolicyRef{{{Name: "Ro", ARN: arnRO, DefaultVersionID: "v1"}}},
+		docs:  map[string]string{arnRO: encode(`{"Statement":[{"Effect":"Allow","Action":["s3:Get*","ec2:DescribeVolumes"]}]}`)},
+	}
+	got, err := Policies(t.Context(), api, sampleCatalogue(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"ec2:DescribeVolumes", s3GetBucketPolicy, s3GetObject}
+	if !slices.Equal(got[0].Grants, want) {
+		t.Errorf("grants = %v, want %v", got[0].Grants, want)
 	}
 }
