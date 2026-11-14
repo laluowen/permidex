@@ -86,7 +86,11 @@ func (c Client) getJSON(ctx context.Context, url string, v any) error {
 	if err != nil {
 		return err
 	}
-	resp, err := c.HTTP.Do(req)
+	hc := c.HTTP
+	if hc == nil {
+		hc = http.DefaultClient
+	}
+	resp, err := hc.Do(req)
 	if err != nil {
 		return err
 	}
@@ -95,7 +99,14 @@ func (c Client) getJSON(ctx context.Context, url string, v any) error {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<10))
 		return fmt.Errorf("%s: %s", resp.Status, strings.TrimSpace(string(body)))
 	}
-	if err := json.NewDecoder(io.LimitReader(resp.Body, maxDoc)).Decode(v); err != nil {
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxDoc+1))
+	if err != nil {
+		return fmt.Errorf("read: %w", err)
+	}
+	if len(data) > maxDoc {
+		return fmt.Errorf("document exceeds %d MiB", maxDoc>>20)
+	}
+	if err := json.Unmarshal(data, v); err != nil {
 		return fmt.Errorf("decode: %w", err)
 	}
 	return nil

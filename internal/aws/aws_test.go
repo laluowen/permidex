@@ -1,6 +1,7 @@
 package aws
 
 import (
+	"bytes"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -79,5 +80,27 @@ func TestHTTPErrorIsReported(t *testing.T) {
 	_, err := Client{HTTP: srv.Client(), IndexURL: srv.URL}.Index(t.Context())
 	if err == nil || !strings.Contains(err.Error(), "404") {
 		t.Fatalf("err = %v, want a 404", err)
+	}
+}
+
+func TestOversizedDocumentIsReported(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write(bytes.Repeat([]byte(" "), maxDoc+1))
+	}))
+	defer srv.Close()
+	_, err := Client{HTTP: srv.Client(), IndexURL: srv.URL}.Index(t.Context())
+	if err == nil || !strings.Contains(err.Error(), "exceeds") {
+		t.Fatalf("err = %v, want an explicit size error", err)
+	}
+}
+
+func TestNilHTTPUsesDefaultClient(t *testing.T) {
+	srv := serve(t)
+	entries, err := Client{IndexURL: srv.URL + "/"}.Index(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 2 {
+		t.Errorf("entries = %d, want 2", len(entries))
 	}
 }
