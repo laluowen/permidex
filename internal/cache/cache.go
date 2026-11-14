@@ -22,9 +22,10 @@ func Path(parts ...string) (string, error) {
 	return filepath.Join(append([]string{dir}, parts...)...), nil
 }
 
-// Dir is the permidex cache directory: $PERMIDEX_CACHE_DIR if set, else $XDG_CACHE_HOME/permidex if set,
-// else ~/.cache/permidex. A variable that is set but not absolute is an error, not a fallback. An empty
-// variable counts as unset.
+// Dir is the permidex cache directory: $PERMIDEX_CACHE_DIR if set, else $XDG_CACHE_HOME/permidex if
+// XDG_CACHE_HOME is an absolute path, else ~/.cache/permidex. PERMIDEX_CACHE_DIR is ours, so a relative
+// value is an error. XDG_CACHE_HOME is the XDG spec's variable, so a relative value is ignored, as the spec
+// says. An empty variable counts as unset.
 func Dir() (string, error) {
 	if d := os.Getenv("PERMIDEX_CACHE_DIR"); d != "" {
 		if !filepath.IsAbs(d) {
@@ -32,10 +33,7 @@ func Dir() (string, error) {
 		}
 		return d, nil
 	}
-	if d := os.Getenv("XDG_CACHE_HOME"); d != "" {
-		if !filepath.IsAbs(d) {
-			return "", fmt.Errorf("XDG_CACHE_HOME must be an absolute path, got %q", d)
-		}
+	if d := os.Getenv("XDG_CACHE_HOME"); d != "" && filepath.IsAbs(d) {
 		return filepath.Join(d, "permidex"), nil
 	}
 	home, err := os.UserHomeDir()

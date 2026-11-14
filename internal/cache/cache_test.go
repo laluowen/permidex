@@ -101,11 +101,17 @@ func TestPathHonoursXDGCacheHome(t *testing.T) {
 	}
 }
 
-func TestRelativeXDGCacheHomeIsAnError(t *testing.T) {
+func TestRelativeXDGCacheHomeIsIgnored(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
 	t.Setenv("PERMIDEX_CACHE_DIR", "")
 	t.Setenv("XDG_CACHE_HOME", "relative/cache")
-	if _, err := Path("gcp", "roles.json"); err == nil || !strings.Contains(err.Error(), "XDG_CACHE_HOME") {
-		t.Errorf("err = %v, want an XDG_CACHE_HOME error", err)
+	got, err := Path("gcp", "roles.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := filepath.Join(home, ".cache", "permidex", "gcp", "roles.json"); got != want {
+		t.Errorf("relative XDG_CACHE_HOME should be ignored: got %q, want %q", got, want)
 	}
 }
 
