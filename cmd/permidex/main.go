@@ -17,7 +17,7 @@ import (
 	"github.com/laluowen/permidex/v2/internal/gcp"
 )
 
-const usage = `usage: permidex <provider> [--refresh|-r]
+const usage = `usage: permidex <provider> [--refresh|-r] | permidex --cache-dir|-c
 
 providers:
   gcp             browse GCP predefined IAM roles and permissions

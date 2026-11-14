@@ -31,7 +31,8 @@ Check `fetchedAt` if the data might be out of date. Refresh when it matters.
 Set `F` to the path:
 
 ```sh
-F="$(permidex --cache-dir)/gcp/roles.json"
+D=$(permidex --cache-dir) || exit 1
+F="$D/gcp/roles.json"
 ```
 
 Role by exact ID:
