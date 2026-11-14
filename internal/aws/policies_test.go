@@ -118,7 +118,7 @@ func TestProgressAndErrors(t *testing.T) {
 		docs:  map[string]string{arnA: encode(`{"Statement":[]}`)},
 	}
 	var seen []int
-	if _, err := Policies(t.Context(), api, sampleCatalogue(), nil, func(n int) { seen = append(seen, n) }); err != nil {
+	if _, err := Policies(t.Context(), api, sampleCatalogue(), nil, func(n int, _ bool) { seen = append(seen, n) }); err != nil {
 		t.Fatal(err)
 	}
 	if !slices.Equal(seen, []int{1}) {

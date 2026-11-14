@@ -139,14 +139,19 @@ func Refresh(ctx context.Context, path string, progress io.Writer) (int, int, er
 	if err != nil {
 		return 0, 0, err
 	}
-	policies, err := Policies(ctx, api, NewCatalogue(docs), prevPolicies, func(done int) {
+	var reused atomic.Int64
+	policies, err := Policies(ctx, api, NewCatalogue(docs), prevPolicies, func(done int, wasReused bool) {
+		if wasReused {
+			reused.Add(1)
+		}
 		if done%100 == 0 {
-			_, _ = fmt.Fprintf(progress, "policies: %d\n", done)
+			_, _ = fmt.Fprintf(progress, "policies: %d (%d reused)\n", done, reused.Load())
 		}
 	})
 	if err != nil {
 		return 0, 0, err
 	}
+	_, _ = fmt.Fprintf(progress, "policies: %d (%d reused)\n", len(policies), reused.Load())
 
 	snap := Snapshot{Version: CacheVersion, FetchedAt: time.Now().UTC(), Policies: policies}
 	for i, d := range docs {

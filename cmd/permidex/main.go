@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -29,7 +30,15 @@ options:
 Run "permidex <provider> --refresh|-r" once before browsing.`
 
 func main() {
-	if err := run(context.Background(), os.Args[1:]); err != nil {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+	err := run(ctx, os.Args[1:])
+	switch {
+	case errors.Is(err, context.Canceled):
+		fmt.Fprintln(os.Stderr, "permidex: interrupted; the existing cache is unchanged")
+		stop()
+		os.Exit(130)
+	case err != nil:
 		fmt.Fprintln(os.Stderr, "permidex:", err)
 		os.Exit(1)
 	}

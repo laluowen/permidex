@@ -48,7 +48,7 @@ const policyWorkers = 8
 
 // Policies lists every AWS-managed policy and reads its default version, several at a time. progress, if
 // set, is called after each policy with the count so far, from any goroutine.
-func Policies(ctx context.Context, api PolicyAPI, cat Catalogue, prev map[string]Policy, progress func(done int)) ([]Policy, error) {
+func Policies(ctx context.Context, api PolicyAPI, cat Catalogue, prev map[string]Policy, progress func(done int, reused bool)) ([]Policy, error) {
 	var refs []PolicyRef
 	marker := ""
 	for {
@@ -69,13 +69,13 @@ func Policies(ctx context.Context, api PolicyAPI, cat Catalogue, prev map[string
 	var done atomic.Int64
 	for i, ref := range refs {
 		g.Go(func() error {
-			p, err := readPolicy(gctx, api, cat, prev, ref)
+			p, reused, err := readPolicy(gctx, api, cat, prev, ref)
 			if err != nil {
 				return err
 			}
 			out[i] = p
 			if progress != nil {
-				progress(int(done.Add(1)))
+				progress(int(done.Add(1)), reused)
 			}
 			return nil
 		})
@@ -89,13 +89,14 @@ func Policies(ctx context.Context, api PolicyAPI, cat Catalogue, prev map[string
 // readPolicy builds one policy. If the previous cache has the same version, its description and actions are
 // reused and no request is made. Grants are always expanded against the current catalogue, because a service
 // change can alter a wildcard's expansion without the policy changing.
-func readPolicy(ctx context.Context, api PolicyAPI, cat Catalogue, prev map[string]Policy, ref PolicyRef) (Policy, error) {
+func readPolicy(ctx context.Context, api PolicyAPI, cat Catalogue, prev map[string]Policy, ref PolicyRef) (Policy, bool, error) {
 	p, ok := prev[ref.Name]
-	if !ok || p.Version != ref.DefaultVersionID || p.ARN != ref.ARN {
+	reused := ok && p.Version == ref.DefaultVersionID && p.ARN == ref.ARN
+	if !reused {
 		var err error
 		p, err = fetchPolicy(ctx, api, ref)
 		if err != nil {
-			return Policy{}, err
+			return Policy{}, false, err
 		}
 	}
 	var grants []string
@@ -103,7 +104,7 @@ func readPolicy(ctx context.Context, api PolicyAPI, cat Catalogue, prev map[stri
 		grants = append(grants, cat.Expand(pat)...)
 	}
 	p.Grants = slices.Compact(slices.Sorted(slices.Values(grants)))
-	return p, nil
+	return p, reused, nil
 }
 
 // fetchPolicy reads a policy's description and default version document, with the API.
