@@ -13,18 +13,29 @@ import (
 // ErrMissing means no cache file exists yet.
 var ErrMissing = errors.New("no cache")
 
-// Path returns the cache file at parts. The directory is $PERMIDEX_CACHE_DIR if set. Otherwise it is
-// permidex/ under the user's cache directory: $XDG_CACHE_HOME or ~/.cache on Linux, ~/Library/Caches on macOS.
+// Path returns the cache file at parts, in the directory cacheDir chooses.
 func Path(parts ...string) (string, error) {
-	dir := os.Getenv("PERMIDEX_CACHE_DIR")
-	if dir == "" {
-		base, err := os.UserCacheDir()
-		if err != nil {
-			return "", fmt.Errorf("cache directory: %w", err)
-		}
-		dir = filepath.Join(base, "permidex")
+	dir, err := cacheDir()
+	if err != nil {
+		return "", err
 	}
 	return filepath.Join(append([]string{dir}, parts...)...), nil
+}
+
+// cacheDir is $PERMIDEX_CACHE_DIR if set, else $XDG_CACHE_HOME/permidex if XDG_CACHE_HOME is set to an
+// absolute path (the XDG spec ignores relative ones), else ~/.cache/permidex. The same on every platform.
+func cacheDir() (string, error) {
+	if d := os.Getenv("PERMIDEX_CACHE_DIR"); d != "" {
+		return filepath.Abs(d)
+	}
+	if d := os.Getenv("XDG_CACHE_HOME"); d != "" && filepath.IsAbs(d) {
+		return filepath.Join(d, "permidex"), nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("home directory: %w", err)
+	}
+	return filepath.Join(home, ".cache", "permidex"), nil
 }
 
 // WriteJSON replaces path atomically with v encoded as indented JSON.
