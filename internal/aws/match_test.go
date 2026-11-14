@@ -52,7 +52,7 @@ func TestExpand(t *testing.T) {
 	}{
 		{s3GetObject, []string{s3GetObject}},
 		{"s3:getobject", []string{s3GetObject}},
-		{"s3:Get*", []string{s3GetObject, s3GetBucketPolicy}},
+		{s3GetWildcard, []string{s3GetObject, s3GetBucketPolicy}},
 		{"ec2:Describe*", []string{ec2DescribeInstances, ec2DescribeVolumes}},
 		{"s3:*", []string{s3GetObject, s3GetBucketPolicy, "s3:ListBucket", "s3:PutObject"}},
 		{"*", []string{s3GetObject, s3GetBucketPolicy, "s3:ListBucket", "s3:PutObject", ec2DescribeInstances, ec2DescribeVolumes, "ec2:RunInstances"}},

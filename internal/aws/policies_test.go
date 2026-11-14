@@ -54,10 +54,10 @@ func encode(doc string) string {
 func TestPoliciesPaginatesAndReadsEachPolicy(t *testing.T) {
 	api := &fakeIAM{
 		pages: [][]PolicyRef{
-			{{Name: "ReadOnlyAccess", ARN: arnRO, DefaultVersionID: "v2"}},
+			{{Name: policyRO, ARN: arnRO, DefaultVersionID: "v2"}},
 			{{Name: "ViewOnlyAccess", ARN: arnView, DefaultVersionID: "v1"}},
 		},
-		desc: map[string]string{arnRO: "read only", arnView: "view only"},
+		desc: map[string]string{arnRO: readOnlyDesc, arnView: "view only"},
 		docs: map[string]string{
 			arnRO:   encode(`{"Statement":[{"Effect":"Allow","Action":["s3:Get*","s3:List*"]}]}`),
 			arnView: encode(`{"Statement":{"Effect":"Allow","Action":"ec2:Describe*"}}`),
@@ -70,10 +70,10 @@ func TestPoliciesPaginatesAndReadsEachPolicy(t *testing.T) {
 	if !reflect.DeepEqual(api.markers, []string{"", "m1"}) {
 		t.Errorf("list markers = %q, want the first page then the marker", api.markers)
 	}
-	if len(got) != 2 || got[0].Description != "read only" || got[0].Version != "v2" {
+	if len(got) != 2 || got[0].Description != readOnlyDesc || got[0].Version != "v2" {
 		t.Fatalf("policies = %+v", got)
 	}
-	if !slices.Equal(got[0].Actions, []string{"s3:Get*", "s3:List*"}) {
+	if !slices.Equal(got[0].Actions, []string{s3GetWildcard, "s3:List*"}) {
 		t.Errorf("list-form actions = %v", got[0].Actions)
 	}
 	if !slices.Equal(got[1].Actions, []string{"ec2:Describe*"}) {

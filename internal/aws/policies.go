@@ -29,15 +29,15 @@ type PolicyAPI interface {
 // Policy is an AWS-managed policy and the actions its document allows, as written (patterns such as
 // s3:Get* are kept as they are).
 type Policy struct {
-	Name        string
-	ARN         string
-	Description string
-	Version     string
-	Actions     []string
+	Name        string   `json:"name"`
+	ARN         string   `json:"arn"`
+	Description string   `json:"description,omitempty"`
+	Version     string   `json:"version"`
+	Actions     []string `json:"actions,omitempty"`
 	// Grants is every known action the Actions patterns cover, expanded against the catalogue.
-	Grants []string
+	Grants []string `json:"grants,omitempty"`
 	// HasNotAction is set when the document uses NotAction, which v1 does not expand.
-	HasNotAction bool
+	HasNotAction bool `json:"hasNotAction,omitempty"`
 }
 
 // Policies lists every AWS-managed policy and reads its default version. progress, if set, is called
