@@ -4,9 +4,12 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sync/atomic"
 	"time"
 
 	"github.com/laluowen/permidex/v2/internal/cache"
+	"golang.org/x/sync/errgroup"
+	"golang.org/x/time/rate"
 )
 
 // CacheVersion is the format of the AWS cache file. Bump it, and update the AWS schema, on any change.
@@ -45,24 +48,49 @@ func Load(path string) (Snapshot, error) {
 	return s, nil
 }
 
+// referenceRate caps requests per second to the public reference. It is a starting guess: tune it against
+// real throttling. serviceWorkers is how many service documents are fetched at once.
+const (
+	referenceRate  = 20
+	serviceWorkers = 8
+)
+
+// fetchDocuments fetches every service document, several at a time, keeping the index's order.
+func fetchDocuments(ctx context.Context, client Client, entries []IndexEntry, progress io.Writer) ([]Document, error) {
+	docs := make([]Document, len(entries))
+	g, gctx := errgroup.WithContext(ctx)
+	g.SetLimit(serviceWorkers)
+	var done atomic.Int64
+	for i, e := range entries {
+		g.Go(func() error {
+			doc, err := client.Service(gctx, e.URL)
+			if err != nil {
+				return err
+			}
+			docs[i] = doc
+			if n := done.Add(1); n%50 == 0 || int(n) == len(entries) {
+				_, _ = fmt.Fprintf(progress, "services: %d/%d\n", n, len(entries))
+			}
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+	return docs, nil
+}
+
 // Refresh fetches the service reference and every AWS-managed policy, and saves the cache at path. Progress
 // lines go to progress. It returns the number of services and policies written.
 func Refresh(ctx context.Context, path string, progress io.Writer) (int, int, error) {
-	client := Client{}
+	client := Client{Limiter: rate.NewLimiter(referenceRate, referenceRate)}
 	entries, err := client.Index(ctx)
 	if err != nil {
 		return 0, 0, err
 	}
-	var docs []Document
-	for i, e := range entries {
-		doc, err := client.Service(ctx, e.URL)
-		if err != nil {
-			return 0, 0, err
-		}
-		docs = append(docs, doc)
-		if (i+1)%50 == 0 || i+1 == len(entries) {
-			_, _ = fmt.Fprintf(progress, "services: %d/%d\n", i+1, len(entries))
-		}
+	docs, err := fetchDocuments(ctx, client, entries, progress)
+	if err != nil {
+		return 0, 0, err
 	}
 
 	api, err := NewPolicyAPI(ctx)

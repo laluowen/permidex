@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 // serve starts a server that answers the index and the s3 document from testdata. The index URLs point
@@ -102,5 +103,50 @@ func TestNilHTTPUsesDefaultClient(t *testing.T) {
 	}
 	if len(entries) != 2 {
 		t.Errorf("entries = %d, want 2", len(entries))
+	}
+}
+
+func TestTransientFailuresAreRetried(t *testing.T) {
+	old := retryBase
+	retryBase = time.Millisecond
+	defer func() { retryBase = old }()
+
+	index, err := os.ReadFile("testdata/index.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls++
+		if calls <= 2 {
+			http.Error(w, "slow down", http.StatusServiceUnavailable)
+			return
+		}
+		_, _ = w.Write(bytes.ReplaceAll(index, []byte("{BASE}"), []byte("http://x")))
+	}))
+	defer srv.Close()
+
+	entries, err := Client{HTTP: srv.Client(), IndexURL: srv.URL}.Index(t.Context())
+	if err != nil {
+		t.Fatalf("Index should succeed after retries: %v", err)
+	}
+	if calls != 3 || len(entries) != 2 {
+		t.Errorf("calls = %d, entries = %d; want 3 calls and 2 entries", calls, len(entries))
+	}
+}
+
+func TestClientErrorsAreNotRetried(t *testing.T) {
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls++
+		http.Error(w, "nope", http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	if _, err := (Client{HTTP: srv.Client(), IndexURL: srv.URL}).Index(t.Context()); err == nil {
+		t.Fatal("want an error")
+	}
+	if calls != 1 {
+		t.Errorf("a 404 was attempted %d times, want once", calls)
 	}
 }

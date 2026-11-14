@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"net/url"
 	"slices"
+	"sync/atomic"
+
+	"golang.org/x/sync/errgroup"
 )
 
 // PolicyRef is a managed policy as ListPolicies returns it.
@@ -40,8 +43,11 @@ type Policy struct {
 	HasNotAction bool `json:"hasNotAction,omitempty"`
 }
 
-// Policies lists every AWS-managed policy and reads its default version. progress, if set, is called
-// after each policy with the count so far.
+// policyWorkers is how many policies are read at once. The API limiter (see sdkIAM) sets the real rate.
+const policyWorkers = 8
+
+// Policies lists every AWS-managed policy and reads its default version, several at a time. progress, if
+// set, is called after each policy with the count so far, from any goroutine.
 func Policies(ctx context.Context, api PolicyAPI, cat Catalogue, progress func(done int)) ([]Policy, error) {
 	var refs []PolicyRef
 	marker := ""
@@ -57,16 +63,25 @@ func Policies(ctx context.Context, api PolicyAPI, cat Catalogue, progress func(d
 		marker = next
 	}
 
-	out := make([]Policy, 0, len(refs))
+	out := make([]Policy, len(refs))
+	g, gctx := errgroup.WithContext(ctx)
+	g.SetLimit(policyWorkers)
+	var done atomic.Int64
 	for i, ref := range refs {
-		p, err := readPolicy(ctx, api, cat, ref)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, p)
-		if progress != nil {
-			progress(i + 1)
-		}
+		g.Go(func() error {
+			p, err := readPolicy(gctx, api, cat, ref)
+			if err != nil {
+				return err
+			}
+			out[i] = p
+			if progress != nil {
+				progress(int(done.Add(1)))
+			}
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
 	}
 	return out, nil
 }
