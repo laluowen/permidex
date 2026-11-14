@@ -1,5 +1,24 @@
 # Changelog
 
+## [2.2.0](https://github.com/laluowen/permidex/compare/v2.1.0...v2.2.0) (2026-11-14)
+
+
+### Features
+
+* **cache:** ~/.cache by default; XDG_CACHE_HOME and PERMIDEX_CACHE_DIR override it ([41abd8c](https://github.com/laluowen/permidex/commit/41abd8c4b0d69a8412c6ccfb789ea3db03a5a735))
+* **cache:** PERMIDEX_CACHE_DIR overrides the cache directory ([9c8e4fe](https://github.com/laluowen/permidex/commit/9c8e4fe627f22c1a49756d6bf348da6395acf436))
+* **cli:** --cache-dir|-c prints the cache directory and exits ([853d683](https://github.com/laluowen/permidex/commit/853d683aa6145f381ab2722d4549e0638b0967ef))
+
+
+### Bug Fixes
+
+* **cache:** ~/.cache by default on every platform; honour XDG_CACHE_HOME; absolute PERMIDEX_CACHE_DIR ([06767ce](https://github.com/laluowen/permidex/commit/06767ced2d9b8bc778645969097d3fd1229e92d6))
+* **cache:** cache variables must be absolute; relative values are an error ([be1c781](https://github.com/laluowen/permidex/commit/be1c7816611b7753c2e602cdfee51f3245198fe9))
+* **cache:** ignore relative XDG_CACHE_HOME per spec; PERMIDEX_CACHE_DIR must be absolute ([09a4045](https://github.com/laluowen/permidex/commit/09a40450ac79dcf0d0a49f738e7b41b9fa06b9aa))
+* **cache:** invalid XDG_CACHE_HOME warns and is ignored; invalid PERMIDEX_CACHE_DIR fails everywhere ([8e5ac23](https://github.com/laluowen/permidex/commit/8e5ac23c6600b76dba4d2d98e5f38d89c6904476))
+* **cache:** use the user cache directory (os.UserCacheDir) ([560f0d8](https://github.com/laluowen/permidex/commit/560f0d8f808ee4f22a0822d9fd8620656b0bd75c))
+* **skill,cli:** check --cache-dir's exit status; show --cache-dir in usage ([4cf9d27](https://github.com/laluowen/permidex/commit/4cf9d27e619b2eb4e4f2094baea95517c4356075))
+
 ## [2.1.0](https://github.com/laluowen/permidex/compare/v2.0.0...v2.1.0) (2026-11-13)
 
 
