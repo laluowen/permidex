@@ -9,7 +9,7 @@ description: Look up GCP predefined IAM roles and their permissions offline, fro
 
 ## Where the file is
 
-`gcp/roles.json` in the cache directory. Ask permidex for that directory rather than working it out: `permidex --cache-dir` (or `-c`) prints it and exits 0. It honours `PERMIDEX_CACHE_DIR` and `XDG_CACHE_HOME`, falling back to `~/.cache/permidex`. `permidex gcp -r` prints the exact path it wrote.
+`gcp/roles.json` in the cache directory. Ask permidex for that directory rather than working it out: `permidex --cache-dir` (or `-c`) prints it and exits 0. It honours `PERMIDEX_CACHE_DIR` and `XDG_CACHE_HOME`, falling back to `~/.cache/permidex`. Both variables must be absolute: if one is relative, the command fails with an error, so treat a failure there as a configuration problem, not a missing cache. `permidex gcp -r` prints the exact path it wrote.
 
 Its format is defined in `gcp-roles.schema.json`, which sits in the same directory. The same schema is in the permidex repository at `schema/gcp-roles.schema.json`. It has `version` (currently `1`), `fetchedAt`, and `roles[]`. Each role has `name` (such as `roles/compute.admin`), and may have `title`, `description`, `stage` and `includedPermissions`. Empty fields are omitted.
 

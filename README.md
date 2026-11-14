@@ -40,7 +40,7 @@ permidex gcp --refresh|-r   # refresh the cache from GCP
 permidex gcp                # browse it
 ```
 
-The cache is `permidex/gcp/roles.json` under `~/.cache` (or `$XDG_CACHE_HOME` when that's set to an absolute path). To put it somewhere else, set `PERMIDEX_CACHE_DIR`; the cache files then go straight into that directory. `permidex --cache-dir` (or `-c`) prints the directory it uses, which is handy in scripts. Each refresh also writes `gcp-roles.schema.json` into the same directory, so the cache describes itself. Browsing never fetches on its own.
+The cache is `permidex/gcp/roles.json` under `~/.cache`. To put it elsewhere, set `$XDG_CACHE_HOME` (the cache then lives in `$XDG_CACHE_HOME/permidex`) or `PERMIDEX_CACHE_DIR` (the cache files go straight into that directory). Both must be absolute paths: a relative value is an error, not a fallback. `PERMIDEX_CACHE_DIR` wins if both are set. `permidex --cache-dir` (or `-c`) prints the directory it uses, which is handy in scripts. Each refresh also writes `gcp-roles.schema.json` into the same directory, so the cache describes itself. Browsing never fetches on its own.
 
 Upgrading from 1.x: the command is now `permidex gcp`, and `permidex refresh` is `permidex gcp --refresh|-r`. The cache moved to `gcp/roles.json`, so run `permidex gcp --refresh|-r` once.
 

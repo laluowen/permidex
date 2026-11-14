@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -100,17 +101,11 @@ func TestPathHonoursXDGCacheHome(t *testing.T) {
 	}
 }
 
-func TestPathIgnoresRelativeXDGCacheHome(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
+func TestRelativeXDGCacheHomeIsAnError(t *testing.T) {
 	t.Setenv("PERMIDEX_CACHE_DIR", "")
 	t.Setenv("XDG_CACHE_HOME", "relative/cache")
-	got, err := Path("gcp", "roles.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if want := filepath.Join(home, ".cache", "permidex", "gcp", "roles.json"); got != want {
-		t.Errorf("relative XDG_CACHE_HOME should be ignored: got %q, want %q", got, want)
+	if _, err := Path("gcp", "roles.json"); err == nil || !strings.Contains(err.Error(), "XDG_CACHE_HOME") {
+		t.Errorf("err = %v, want an XDG_CACHE_HOME error", err)
 	}
 }
 
@@ -125,13 +120,10 @@ func TestPathHonoursPermidexCacheDir(t *testing.T) {
 	}
 }
 
-func TestRelativePermidexCacheDirBecomesAbsolute(t *testing.T) {
+func TestRelativePermidexCacheDirIsAnError(t *testing.T) {
 	t.Setenv("PERMIDEX_CACHE_DIR", "rel/cache")
-	got, err := Path("gcp", "roles.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !filepath.IsAbs(got) {
-		t.Errorf("Path = %q, want an absolute path", got)
+	t.Setenv("XDG_CACHE_HOME", "/absolute/xdg")
+	if _, err := Path("gcp", "roles.json"); err == nil || !strings.Contains(err.Error(), "PERMIDEX_CACHE_DIR") {
+		t.Errorf("err = %v, want a PERMIDEX_CACHE_DIR error even with an absolute XDG set", err)
 	}
 }
