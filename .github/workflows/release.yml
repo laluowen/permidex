@@ -101,6 +101,21 @@ jobs:
         with:
           go-version-file: go.mod
 
+      # The AWS catalogue for this release, as aws-catalogue.json. It is listed in checksums.txt (see `checksum` in
+      # .goreleaser.yaml), so the keyless signature covers it. Reads IAM through the OIDC role in vars.AWS_ROLE_ARN,
+      # which trusts only main. Releases come from main, and a `tag` rerun checks out that tag's code.
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          role-session-name: permidex-release-${{ github.run_id }}
+          aws-region: eu-north-1
+      - name: Build the AWS catalogue
+        env:
+          PERMIDEX_CACHE_DIR: ${{ runner.temp }}/permidex-cache
+        run: |
+          go run ./cmd/permidex aws -r
+          cp "$PERMIDEX_CACHE_DIR/aws/catalogue.json" aws-catalogue.json
+
       # cosign signs checksums.txt keylessly, and Syft writes each archive's
       # SBOM from its build hook (see `signs` and `builds.hooks` in
       # .goreleaser.yaml). Both must be on PATH before GoReleaser runs.
