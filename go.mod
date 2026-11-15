@@ -11,7 +11,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/iam v1.66.0
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
 	golang.org/x/oauth2 v0.38.0
-	golang.org/x/sync v0.22.0
+	golang.org/x/sync v0.25.0
 	golang.org/x/time v0.16.0
 )
 
