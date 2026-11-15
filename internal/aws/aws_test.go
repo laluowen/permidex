@@ -174,3 +174,21 @@ func TestUnchangedServiceIsNotRequested(t *testing.T) {
 		t.Errorf("docs = %+v, want the cached actions with the prefix stripped", docs)
 	}
 }
+
+func TestBadBodyIsNotRetried(t *testing.T) {
+	old := retryBase
+	retryBase = time.Millisecond
+	defer func() { retryBase = old }()
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls++
+		_, _ = w.Write([]byte("<html>captive portal</html>"))
+	}))
+	defer srv.Close()
+	if _, err := (Client{HTTP: srv.Client(), IndexURL: srv.URL}).Index(t.Context()); err == nil {
+		t.Fatal("want a decode error")
+	}
+	if calls != 1 {
+		t.Errorf("a bad body was requested %d times, want once", calls)
+	}
+}

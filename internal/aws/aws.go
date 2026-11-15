@@ -122,9 +122,20 @@ func (c Client) getJSON(ctx context.Context, url string, v any) error {
 	return err
 }
 
+// fatalError is a response that arrived but can't be used: a bad body or an oversized document. Retrying
+// would get the same answer, so it is not retried.
+type fatalError struct{ err error }
+
+func (e *fatalError) Error() string { return e.err.Error() }
+func (e *fatalError) Unwrap() error { return e.err }
+
 // retryable reports whether a failure is worth another attempt: throttling, server errors, or a network
-// error. A bad document or a client error is not retried.
+// error. A bad document, a client error or a cancelled context is not retried.
 func retryable(err error) bool {
+	var fe *fatalError
+	if errors.As(err, &fe) {
+		return false
+	}
 	var se *statusError
 	if errors.As(err, &se) {
 		return se.code == http.StatusTooManyRequests || se.code >= 500
@@ -180,10 +191,10 @@ func (c Client) getOnce(ctx context.Context, url string, v any) error {
 		return fmt.Errorf("read: %w", err)
 	}
 	if len(data) > maxDoc {
-		return fmt.Errorf("document exceeds %d MiB", maxDoc>>20)
+		return &fatalError{fmt.Errorf("document exceeds %d MiB", maxDoc>>20)}
 	}
 	if err := json.Unmarshal(data, v); err != nil {
-		return fmt.Errorf("decode: %w", err)
+		return &fatalError{fmt.Errorf("decode: %w", err)}
 	}
 	return nil
 }

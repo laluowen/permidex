@@ -62,6 +62,9 @@ const (
 // matches the previous cache is rebuilt from that cache with no request. The rest are fetched, several at a
 // time.
 func fetchDocuments(ctx context.Context, client Client, entries []IndexEntry, prev map[string]CacheService, progress io.Writer) ([]Document, error) {
+	if progress == nil {
+		progress = io.Discard
+	}
 	docs := make([]Document, len(entries))
 	var fetch []int
 	for i, e := range entries {

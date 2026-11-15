@@ -134,7 +134,7 @@ func fetchPolicy(ctx context.Context, api PolicyAPI, ref PolicyRef) (Policy, err
 // allowedActions returns the actions of the Allow statements in a URL-encoded policy document.
 // Statement and Action may each be a single value or a list, as IAM allows.
 func allowedActions(encoded string) ([]string, bool, error) {
-	doc, err := url.QueryUnescape(encoded)
+	doc, err := url.PathUnescape(encoded)
 	if err != nil {
 		return nil, false, err
 	}
