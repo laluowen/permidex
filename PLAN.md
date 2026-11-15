@@ -182,10 +182,12 @@ On launch, for the provider being opened:
 3. **Never:** never prompt again for this provider.
 4. **Always:** save the source. At startup, if the cache is empty or more than 7 days old, run that source first, with the same output as a manual run, then open the TUI.
 
+**Cold AWS fills:** choosing Provider when the AWS cache is empty shows a warning first. It says a full fill may take up to 10 minutes, names the AWS identity that will be used, and gives a rough call count (about 3,700 on a cold start, fewer for a delta). The user can back out and pick another source. The short non-TUI flags (`--refresh`, `--pull`, `--nightly`) don't warn; they assume the user knows what they're doing.
+
 Settings:
 - Stored in `~/.config/permidex.json`, or under `$XDG_CONFIG_HOME` if that's set. One file, per provider. Not configurable beyond that yet.
 - The prompt shows where the file is.
-- `--settings-file|-s` overrides the path. The agent skills need updating to mention it.
+- `--settings-file|-s` only prints the computed settings path. No custom location yet, so it's a reference for people, not a setting. The agent skills need updating for it.
 
 Open questions:
 - The age threshold per provider. GCP is cheap to refresh; AWS takes minutes on a cold cache. A cold AWS refresh might block the TUI for a long time, so it needs progress output before the TUI opens.
