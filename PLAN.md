@@ -157,3 +157,10 @@ Goal: type loosely (`cmpadm` → `roles/compute.admin`) and still get sensible r
 ### Services (decision)
 
 GCP's roles API has no service field and no permission-to-service mapping, so a service is only the first dot-segment of a permission name (`compute`). It is browsable and selectable as a convenience and written to the YAML as-is. It is not an API hostname, so no `.googleapis.com` FQDN is derived.
+
+## Packaging (later)
+
+Not part of the AWS work. Things to look at now that the release ships data as well as binaries:
+- **packslip:** the release already ships signed checksums and attestations. packslip may cover verifying and installing release artifacts more directly than mise does, including the catalogue, so check whether it replaces or complements the current setup.
+- **Cache artifacts via mise:** a mise install could place the latest release's catalogue into the configured cache directory, so users get the data with the binary and don't run `aws -r` on first use. Needs a decision on what counts as a trusted artifact and how it's verified.
+- **Nightly access:** `--nightly` needs a token with Actions read on this repo. Decide how credentials are looked up before adding it.
