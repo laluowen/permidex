@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.4](https://github.com/laluowen/permidex/compare/v2.3.3...v2.3.4) (2026-11-15)
+
+
+### Bug Fixes
+
+* **cli:** bare permidex exits 1; -c reads the provider's own cache path ([b8079d4](https://github.com/laluowen/permidex/commit/b8079d430460624390e2865a6287271f021116ea))
+
 ## [2.3.3](https://github.com/laluowen/permidex/compare/v2.3.2...v2.3.3) (2026-11-15)
 
 
