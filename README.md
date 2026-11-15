@@ -19,7 +19,7 @@ Or download a release archive for darwin or linux (amd64, arm64) and put `permid
 <!-- x-release-please-start-version -->
 ```sh
 mise use -g github:laluowen/permidex@latest  # the newest release
-mise use -g github:laluowen/permidex@2.3.1   # or pin this exact version
+mise use -g github:laluowen/permidex@2.1.0   # or pin this exact version
 ```
 <!-- x-release-please-end -->
 
@@ -40,7 +40,7 @@ permidex gcp --refresh|-r   # refresh the cache from GCP
 permidex gcp                # browse it
 ```
 
-The cache is `permidex/gcp/roles.json` under `~/.cache`. To put it elsewhere, set `$XDG_CACHE_HOME` (the cache then lives in `$XDG_CACHE_HOME/permidex`) or `PERMIDEX_CACHE_DIR` (the cache files go straight into that directory). `PERMIDEX_CACHE_DIR` wins if both are set. `PERMIDEX_CACHE_DIR` must be an absolute path, or permidex stops with an error. An invalid `XDG_CACHE_HOME` is ignored, as the XDG spec says, with a warning on stderr. `permidex --cache-dir` (or `-c`) prints the directory it uses, which is handy in scripts. Each refresh also writes `gcp-roles.schema.json` into the same directory, so the cache describes itself. Browsing never fetches on its own.
+The cache is `permidex/gcp/roles.json` under `~/.cache`. To put it elsewhere, set `$XDG_CACHE_HOME` (the cache then lives in `$XDG_CACHE_HOME/permidex`) or `PERMIDEX_CACHE_DIR` (the cache files go straight into that directory). `PERMIDEX_CACHE_DIR` wins if both are set. `PERMIDEX_CACHE_DIR` must be an absolute path, or permidex stops with an error. An invalid `XDG_CACHE_HOME` is ignored, as the XDG spec says, with a warning on stderr. `permidex -c` prints the base cache directory, and `permidex gcp -c` prints the directory holding the GCP cache, which is handy in scripts. Each refresh also writes `gcp-roles.schema.json` into the same directory, so the cache describes itself. Browsing never fetches on its own.
 
 Upgrading from 1.x: the command is now `permidex gcp`, and `permidex refresh` is `permidex gcp --refresh|-r`. The cache moved to `gcp/roles.json`, so run `permidex gcp --refresh|-r` once.
 
@@ -53,7 +53,7 @@ permidex aws --refresh|-r   # refresh the cache from AWS
 permidex aws                # browse AWS actions, managed policies and services
 ```
 
-The first refresh reads every AWS-managed policy and every service document, which takes a few minutes. Later refreshes are deltas: only policies and services that changed are fetched. The cache is `permidex/aws/catalogue.json` in the cache directory (see above).
+The refresh takes a few minutes: it reads every AWS-managed policy and every service document. The cache is `permidex/aws/catalogue.json` under your cache directory.
 
 ## Agents
 
