@@ -164,3 +164,13 @@ Not part of the AWS work. Things to look at now that the release ships data as w
 - **packslip:** the release already ships signed checksums and attestations. packslip may cover verifying and installing release artifacts more directly than mise does, including the catalogue, so check whether it replaces or complements the current setup.
 - **Cache artifacts via mise:** a mise install could place the latest release's catalogue into the configured cache directory, so users get the data with the binary and don't run `aws -r` on first use. Needs a decision on what counts as a trusted artifact and how it's verified.
 - **Nightly access:** `--nightly` needs a token with Actions read on this repo. Decide how credentials are looked up before adding it.
+
+## Stale cache prompt (later)
+
+When the cache is older than a threshold (say 7 days, by the `fetchedAt` in the cache), the TUI shows a short prompt, not a silent warning. The choices:
+- **Ignore once:** dismiss for this session only.
+- **Pull the latest release** (`--pull`).
+- **Pull the nightly** (`--nightly`), which needs credentials.
+- **Never show this again:** saved to a config file, such as `~/.config/permidex.yaml`, so the prompt doesn't nag.
+
+Depends on `--pull` and `--nightly` existing first. Open questions: the threshold per provider, where the config lives (XDG or `~/.config`, to match the cache rules), and whether "never" should also cover the choice of source, not just the prompt.
