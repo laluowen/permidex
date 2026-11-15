@@ -124,7 +124,7 @@ $XDG_CACHE_HOME/permidex if XDG_CACHE_HOME is an absolute path, otherwise ~/.cac
 				_, _ = fmt.Fprintln(cmd.OutOrStdout(), dir)
 				return nil
 			}
-			return cmd.Help()
+			return errors.New("no provider given: run `permidex --help` for the list")
 		},
 	}
 	root.Flags().BoolVarP(&cacheDir, "cache-dir", "c", false, "print the cache directory and exit")
@@ -144,17 +144,13 @@ func providerCommand(p provider) *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if cacheDir {
-				dir, err := cacheDirectory(cmd)
-				if err != nil {
-					return err
-				}
-				_, _ = fmt.Fprintln(cmd.OutOrStdout(), filepath.Join(dir, p.name))
-				return nil
-			}
 			path, err := providerPath(cmd, p)
 			if err != nil {
 				return err
+			}
+			if cacheDir {
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), filepath.Dir(path))
+				return nil
 			}
 			if refresh {
 				summary, err := p.refresh(cmd.Context(), path, cmd.ErrOrStderr())
