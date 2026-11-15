@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.3.0](https://github.com/laluowen/permidex/compare/v2.2.0...v2.3.0) (2026-11-15)
+
+
+### Features
+
+* **aws:** browse AWS actions, managed policies and services ([f7f756e](https://github.com/laluowen/permidex/commit/f7f756edb7fa87c97da8aed2b4ad465bb51eaa1f))
+* **aws:** permidex aws command, with refresh progress and a clean Ctrl+C ([3ffdd23](https://github.com/laluowen/permidex/commit/3ffdd2373cbb6b9e107d48511c6b7e6b47335e02))
+* **aws:** read AWS actions, managed policies and services ([5985f09](https://github.com/laluowen/permidex/commit/5985f092a08c2046826a4d1f826d487ba5496d41))
+
+
+### Bug Fixes
+
+* **aws:** don't retry bad bodies; PathUnescape policy documents; nil progress is safe ([1bf7825](https://github.com/laluowen/permidex/commit/1bf7825cc6c024a91f94ef0f64bdd7870d02d7b4))
+
 ## [2.2.0](https://github.com/laluowen/permidex/compare/v2.1.0...v2.2.0) (2026-11-14)
 
 
