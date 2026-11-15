@@ -10,10 +10,6 @@
         {
           "type": "generic",
           "path": "README.md"
-        },
-        {
-          "type": "generic",
-          "path": ".ci/permidex.version"
         }
       ]
     }
