@@ -1,8 +1,8 @@
 name: Cache AWS
 
-# Keeps the AWS catalogue cache warm and publishes it as a daily artifact. The job runs the latest released permidex,
-# not main: `mise exec` installs it from the GitHub release, and mise verifies the download (checksums and GitHub
-# artifact attestations). A broken commit on main can't break cache warming, and the release job restores the same
+# Keeps the AWS catalogue cache warm and publishes it as a daily artifact. The job runs a released permidex, not main:
+# `mise exec` installs the pinned version from the GitHub release, and mise verifies the download (checksums and GitHub
+# artifact attestations). release-please bumps the pin in each release PR (see release-please-config.json). A broken commit on main can't break cache warming, and the release job restores the same
 # cache (keyed on main, see release.yml), so the cache never ages out between releases. The AWS role's trust policy
 # only accepts runs of laluowen/permidex on main, so this does nothing from any other ref.
 on:
@@ -48,7 +48,7 @@ jobs:
             aws-catalogue-
 
       - name: Refresh the AWS catalogue
-        run: mise exec github:laluowen/permidex@latest -- permidex aws -r
+        run: mise exec github:laluowen/permidex@2.3.1 -- permidex aws -r # x-release-please-version
 
       - name: Save the AWS catalogue cache
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
