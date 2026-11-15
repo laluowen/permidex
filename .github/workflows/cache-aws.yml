@@ -1,0 +1,51 @@
+name: Cache AWS
+
+# Builds the AWS catalogue cache and uploads it as a workflow artifact. The AWS role's trust policy only accepts
+# runs of laluowen/permidex on main, so this workflow does nothing from any other ref.
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+# Nothing by default: the job asks only for what it needs.
+permissions: {}
+
+concurrency:
+  group: cache-aws
+  cancel-in-progress: false
+
+jobs:
+  aws-cache:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      id-token: write # sign in to AWS over OIDC
+    env:
+      PERMIDEX_CACHE_DIR: ${{ runner.temp }}/permidex-cache
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Build permidex
+        run: go build -o "$RUNNER_TEMP/bin/permidex" ./cmd/permidex
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          role-session-name: permidex-cache-${{ github.run_id }}
+          aws-region: eu-north-1
+      - name: Refresh the AWS cache
+        run: ${{ runner.temp }}/bin/permidex aws -r
+      - name: Checksum the catalogue
+        run: sha256sum catalogue.json > catalogue.json.sha256
+        working-directory: ${{ env.PERMIDEX_CACHE_DIR }}/aws
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: aws-catalogue
+          path: ${{ env.PERMIDEX_CACHE_DIR }}/aws/
+          retention-days: 90
+          if-no-files-found: error
