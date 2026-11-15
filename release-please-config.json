@@ -13,7 +13,7 @@
         },
         {
           "type": "generic",
-          "path": "ci/permidex.version"
+          "path": ".ci/permidex.version"
         }
       ]
     }
