@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.3.1](https://github.com/laluowen/permidex/compare/v2.3.0...v2.3.1) (2026-11-15)
+
+
+### Bug Fixes
+
+* **deps:** update module charm.land/lipgloss/v2 to v2.1.1 ([e6d493f](https://github.com/laluowen/permidex/commit/e6d493f840468981b9cd9754dbd9531ab47200f2))
+* **deps:** update module golang.org/x/sync to v0.25.0 ([799d780](https://github.com/laluowen/permidex/commit/799d780776b2c8e87aedd0635655d17e17df4e7e))
+
 ## [2.3.0](https://github.com/laluowen/permidex/compare/v2.2.0...v2.3.0) (2026-11-15)
 
 
