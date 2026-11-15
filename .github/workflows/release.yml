@@ -109,12 +109,25 @@ jobs:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           role-session-name: permidex-release-${{ github.run_id }}
           aws-region: eu-north-1
+      # The previous catalogue is restored from the cache, so `aws -r` only fetches what changed since the last
+      # release. The cache is saved after each run, under a new key, and the newest one is restored next time.
+      # If the cache's format version doesn't match, permidex does a full refresh.
+      - name: Restore the AWS catalogue cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/permidex/aws
+          key: aws-catalogue-${{ github.run_id }}
+          restore-keys: |
+            aws-catalogue-
       - name: Build the AWS catalogue
-        env:
-          PERMIDEX_CACHE_DIR: ${{ runner.temp }}/permidex-cache
         run: |
           go run ./cmd/permidex aws -r
-          cp "$PERMIDEX_CACHE_DIR/aws/catalogue.json" aws-catalogue.json
+          cp ~/.cache/permidex/aws/catalogue.json aws-catalogue.json
+      - name: Save the AWS catalogue cache
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/permidex/aws
+          key: aws-catalogue-${{ github.run_id }}
 
       # cosign signs checksums.txt keylessly, and Syft writes each archive's
       # SBOM from its build hook (see `signs` and `builds.hooks` in
