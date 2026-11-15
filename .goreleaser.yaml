@@ -31,6 +31,8 @@ archives:
 
 checksum:
   name_template: "checksums.txt"
+  extra_files:
+    - glob: ./aws-catalogue.json
 
 # Keyless cosign signature (Sigstore) on checksums.txt. It lists the sha256 of
 # every archive, and each archive holds its SBOM, so one signed file covers
@@ -54,6 +56,10 @@ changelog:
   disable: true
 
 release:
+  # The AWS catalogue, built by the release job (see .github/workflows/release.yml). It is listed in checksums.txt,
+  # which cosign signs, so it is covered by the same signature as the binaries.
+  extra_files:
+    - glob: ./aws-catalogue.json
   use_existing_draft: true
   draft: false
   mode: keep-existing

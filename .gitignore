@@ -12,3 +12,6 @@ dist/
 
 # local review notes, not tracked
 code-review.md
+
+# AWS catalogue built for a release (see .github/workflows/release.yml)
+/aws-catalogue.json

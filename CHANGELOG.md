@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.3.3](https://github.com/laluowen/permidex/compare/v2.3.2...v2.3.3) (2026-11-15)
+
+
+### Bug Fixes
+
+* **ci:** read the daily permidex pin from .release-please-manifest.json ([5e994a7](https://github.com/laluowen/permidex/commit/5e994a747602464f775fa8559e23c4bd4440f672))
+
+## [2.3.2](https://github.com/laluowen/permidex/compare/v2.3.1...v2.3.2) (2026-11-15)
+
+
+### Bug Fixes
+
+* **ci:** keep the pinned permidex version out of .github/workflows ([e1d8978](https://github.com/laluowen/permidex/commit/e1d897884d141cfa3e93e718e5c79cb028214e2b))
+* **ci:** keep the pinned permidex version out of .github/workflows ([c151b15](https://github.com/laluowen/permidex/commit/c151b15ed5677acf6d467b49393046317e8a531b))
+* **ci:** set the cache directory in a step; job env can't use the runner context ([cebb52c](https://github.com/laluowen/permidex/commit/cebb52cec2c6b607dacfc5682acd483e5b07a3e7))
+* **ci:** set the cache directory in a step; job env can't use the runner context ([8c182af](https://github.com/laluowen/permidex/commit/8c182afc5084b74182c9eba63d1de4ac6b945f5f))
+
 ## [2.3.1](https://github.com/laluowen/permidex/compare/v2.3.0...v2.3.1) (2026-11-15)
 
 

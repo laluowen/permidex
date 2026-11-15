@@ -157,3 +157,38 @@ Goal: type loosely (`cmpadm` → `roles/compute.admin`) and still get sensible r
 ### Services (decision)
 
 GCP's roles API has no service field and no permission-to-service mapping, so a service is only the first dot-segment of a permission name (`compute`). It is browsable and selectable as a convenience and written to the YAML as-is. It is not an API hostname, so no `.googleapis.com` FQDN is derived.
+
+## Packaging (later)
+
+Not part of the AWS work. Things to look at now that the release ships data as well as binaries:
+- **packslip:** the release already ships signed checksums and attestations. packslip may cover verifying and installing release artifacts more directly than mise does, including the catalogue, so check whether it replaces or complements the current setup.
+- **Cache artifacts via mise:** a mise install could place the latest release's catalogue into the configured cache directory, so users get the data with the binary and don't run `aws -r` on first use. Needs a decision on what counts as a trusted artifact and how it's verified.
+- **Nightly access:** `--nightly` needs a token with Actions read on this repo. Decide how credentials are looked up before adding it.
+
+## Stale cache prompt (later)
+
+Depends on `--pull` and `--nightly` existing first. `--refresh`, `--pull` and `--nightly` stay as explicit flags, mainly for CI. People using the TUI shouldn't need them.
+
+On launch, for the provider being opened:
+
+1. **Is the cache empty, or more than 7 days old?** (by `fetchedAt`). If not, open the TUI.
+2. **Prompt:** "Your cache is <age> old" or "You have no cache yet. Refresh it?"
+   - **Yes:** choose a source:
+     - **Provider:** refresh from the cloud (`--refresh`).
+     - **Release:** the latest release, with its datestamp (`--pull`).
+     - **Nightly:** the latest nightly build (`--nightly`), which needs credentials.
+     - Then: "Always?" Yes or No. The hint says the same thing can be run directly as `permidex <provider> --refresh|--pull|--nightly`.
+   - **No:** "Never?" Yes or No.
+3. **Never:** never prompt again for this provider.
+4. **Always:** save the source. At startup, if the cache is empty or more than 7 days old, run that source first, with the same output as a manual run, then open the TUI.
+
+**Cold AWS fills:** choosing Provider when the AWS cache is empty shows a warning first. It says a full fill may take up to 10 minutes, names the AWS identity that will be used, and gives a rough call count (about 3,700 on a cold start, fewer for a delta). The user can back out and pick another source. The short non-TUI flags (`--refresh`, `--pull`, `--nightly`) don't warn; they assume the user knows what they're doing.
+
+Settings:
+- Stored in `~/.config/permidex.json`, or under `$XDG_CONFIG_HOME` if that's set. One file, per provider. Not configurable beyond that yet.
+- The prompt shows where the file is.
+- `--settings-file|-s` only prints the computed settings path. No custom location yet, so it's a reference for people, not a setting. The agent skills need updating for it.
+
+Open questions:
+- The age threshold per provider. GCP is cheap to refresh; AWS takes minutes on a cold cache. A cold AWS refresh might block the TUI for a long time, so it needs progress output before the TUI opens.
+- Whether "Never" should also remember the source choice, or only the prompt.

@@ -70,7 +70,7 @@ AWS default credential chain (environment, shared config, SSO, instance role). T
 
 ## Timing and shared data
 
-A full refresh is about 2,000 calls. Two things would cut that down:
+A cold full refresh is about 3,700 calls (457 service documents, 1,605 policies at two calls each, and the list pages). Two things would cut that down:
 - **Incremental refresh:** reuse a cached policy document when its `DefaultVersionId` hasn't changed, and refetch a service document only when its `modified` timestamp changes.
 - **A shared snapshot:** CI publishes the catalogue as a versioned release asset, and `permidex aws --fetch` downloads it, opt-in. The public service reference needs no credentials, so CI can do that part. Policies need an IAM read identity in CI, which is an access decision, so it needs sign-off first.
 
