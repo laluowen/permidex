@@ -25,6 +25,8 @@ jobs:
     permissions:
       contents: read
       id-token: write # sign in to AWS over OIDC
+    env:
+      PERMIDEX_CACHE_DIR: ${{ runner.temp }}/permidex-cache
     steps:
       # Installs mise, which then installs permidex from the latest release. mise verifies the download against the
       # release's checksums and its GitHub artifact attestations.
@@ -40,7 +42,7 @@ jobs:
       - name: Restore the AWS catalogue cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: ~/.cache/permidex/aws
+          path: ${{ env.PERMIDEX_CACHE_DIR }}/aws
           key: aws-catalogue-${{ github.run_id }}
           restore-keys: |
             aws-catalogue-
@@ -51,12 +53,12 @@ jobs:
       - name: Save the AWS catalogue cache
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: ~/.cache/permidex/aws
+          path: ${{ env.PERMIDEX_CACHE_DIR }}/aws
           key: aws-catalogue-${{ github.run_id }}
 
       - name: Checksum and stage the catalogue
         run: |
-          cp ~/.cache/permidex/aws/catalogue.json catalogue.json
+          cp "$PERMIDEX_CACHE_DIR/aws/catalogue.json" catalogue.json
           sha256sum catalogue.json > catalogue.json.sha256
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
