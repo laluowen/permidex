@@ -167,10 +167,26 @@ Not part of the AWS work. Things to look at now that the release ships data as w
 
 ## Stale cache prompt (later)
 
-When the cache is older than a threshold (say 7 days, by the `fetchedAt` in the cache), the TUI shows a short prompt, not a silent warning. The choices:
-- **Ignore once:** dismiss for this session only.
-- **Pull the latest release** (`--pull`).
-- **Pull the nightly** (`--nightly`), which needs credentials.
-- **Never show this again:** saved to a config file, such as `~/.config/permidex.yaml`, so the prompt doesn't nag.
+Depends on `--pull` and `--nightly` existing first. `--refresh`, `--pull` and `--nightly` stay as explicit flags, mainly for CI. People using the TUI shouldn't need them.
 
-Depends on `--pull` and `--nightly` existing first. Open questions: the threshold per provider, where the config lives (XDG or `~/.config`, to match the cache rules), and whether "never" should also cover the choice of source, not just the prompt.
+On launch, for the provider being opened:
+
+1. **Is the cache empty, or more than 7 days old?** (by `fetchedAt`). If not, open the TUI.
+2. **Prompt:** "Your cache is <age> old" or "You have no cache yet. Refresh it?"
+   - **Yes:** choose a source:
+     - **Provider:** refresh from the cloud (`--refresh`).
+     - **Release:** the latest release, with its datestamp (`--pull`).
+     - **Nightly:** the latest nightly build (`--nightly`), which needs credentials.
+     - Then: "Always?" Yes or No. The hint says the same thing can be run directly as `permidex <provider> --refresh|--pull|--nightly`.
+   - **No:** "Never?" Yes or No.
+3. **Never:** never prompt again for this provider.
+4. **Always:** save the source. At startup, if the cache is empty or more than 7 days old, run that source first, with the same output as a manual run, then open the TUI.
+
+Settings:
+- Stored in `~/.config/permidex.json`, or under `$XDG_CONFIG_HOME` if that's set. One file, per provider. Not configurable beyond that yet.
+- The prompt shows where the file is.
+- `--settings-file|-s` overrides the path. The agent skills need updating to mention it.
+
+Open questions:
+- The age threshold per provider. GCP is cheap to refresh; AWS takes minutes on a cold cache. A cold AWS refresh might block the TUI for a long time, so it needs progress output before the TUI opens.
+- Whether "Never" should also remember the source choice, or only the prompt.
