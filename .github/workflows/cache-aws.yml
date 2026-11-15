@@ -1,10 +1,11 @@
 name: Cache AWS
 
-# Keeps the AWS catalogue cache warm and publishes it as a daily artifact. The job runs a released permidex, not main:
-# `mise exec` installs the pinned version from the GitHub release, and mise verifies the download (checksums and GitHub
-# artifact attestations). release-please bumps the pin in each release PR (see release-please-config.json). A broken commit on main can't break cache warming, and the release job restores the same
-# cache (keyed on main, see release.yml), so the cache never ages out between releases. The AWS role's trust policy
-# only accepts runs of laluowen/permidex on main, so this does nothing from any other ref.
+# Keeps the AWS catalogue cache warm and publishes it as a daily artifact. The job runs a released permidex, not main.
+# `mise exec` installs the version in ci/permidex.version from the GitHub release, and mise verifies the download
+# (checksums and GitHub artifact attestations). release-please bumps that file in each release PR. A broken commit on
+# main can't break cache warming, and the release job restores the same cache (keyed on main, see release.yml), so the
+# cache never ages out between releases. The AWS role's trust policy only accepts runs of laluowen/permidex on main,
+# so this does nothing from any other ref.
 on:
   schedule:
     - cron: "17 3 * * *"
@@ -26,6 +27,9 @@ jobs:
       contents: read
       id-token: write # sign in to AWS over OIDC
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       # Job-level env can't use the runner context, so the directory is set here, for every later step.
       - name: Set the cache directory
         run: echo "PERMIDEX_CACHE_DIR=${{ runner.temp }}/permidex-cache" >> "$GITHUB_ENV"
@@ -49,7 +53,7 @@ jobs:
             aws-catalogue-
 
       - name: Refresh the AWS catalogue
-        run: mise exec github:laluowen/permidex@2.3.1 -- permidex aws -r # x-release-please-version
+        run: mise exec "github:laluowen/permidex@$(awk '{print $1}' ci/permidex.version)" -- permidex aws -r
 
       - name: Save the AWS catalogue cache
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
