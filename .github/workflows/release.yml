@@ -73,10 +73,6 @@ jobs:
       contents: read
       actions: read # read CI runs for the release commit
       id-token: write # OIDC sign-in to AWS, through the role in vars.AWS_ROLE_ARN (trusts only main)
-    env:
-      # One explicit cache directory for restore, save and the copy below, so it doesn't depend on the runner's
-      # XDG_CACHE_HOME. A job's runner.temp is a normal directory; actions/cache saves it before the job ends.
-      PERMIDEX_CACHE_DIR: ${{ runner.temp }}/permidex-cache
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -108,6 +104,10 @@ jobs:
           echo "No successful CI run found for release commit ${release_sha}" >&2
           exit 1
 
+      # One explicit cache directory for restore, save and the copy below, so it doesn't depend on the runner's
+      # XDG_CACHE_HOME. Job-level env can't use the runner context, so it's set here, for every later step.
+      - name: Set the cache directory
+        run: echo "PERMIDEX_CACHE_DIR=${{ runner.temp }}/permidex-cache" >> "$GITHUB_ENV"
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
