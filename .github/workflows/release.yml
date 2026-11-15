@@ -26,6 +26,7 @@ permissions: {}
 
 jobs:
   release-please:
+    timeout-minutes: 15
     if: >-
       github.ref == 'refs/heads/main' &&
       inputs.tag == '' &&
@@ -54,6 +55,8 @@ jobs:
 
   goreleaser:
     needs: release-please
+    # The AWS catalogue build takes a few minutes on a cold cache. Everything else in this job is quick.
+    timeout-minutes: 60
     # release-please is skipped when `tag` is given, so don't require it to have run.
     if: >-
       !cancelled() && !failure() && github.ref == 'refs/heads/main' &&
