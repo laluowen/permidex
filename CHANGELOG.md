@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.3](https://github.com/laluowen/permidex/compare/v2.3.2...v2.3.3) (2026-11-15)
+
+
+### Bug Fixes
+
+* **ci:** read the daily permidex pin from .release-please-manifest.json ([5e994a7](https://github.com/laluowen/permidex/commit/5e994a747602464f775fa8559e23c4bd4440f672))
+
 ## [2.3.2](https://github.com/laluowen/permidex/compare/v2.3.1...v2.3.2) (2026-11-15)
 
 
