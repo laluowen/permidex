@@ -1,0 +1,14 @@
+[
+  {
+    "service": "iam",
+    "serviceName": "IAM",
+    "url": "{BASE}/v1/iam/iam.json",
+    "modified": 1792604717
+  },
+  {
+    "service": "s3",
+    "serviceName": "S3",
+    "url": "{BASE}/v1/s3/s3.json",
+    "modified": 1792604714
+  }
+]

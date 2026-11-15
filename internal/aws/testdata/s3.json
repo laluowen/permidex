@@ -1,0 +1,264 @@
+{
+  "Name": "s3",
+  "ServiceName": "S3",
+  "Actions": [
+    {
+      "Name": "AbortMultipartUpload",
+      "ActionConditionKeys": [
+        "s3:AccessGrantsInstanceArn",
+        "s3:ResourceAccount",
+        "s3:TlsVersion",
+        "s3:authType",
+        "s3:signatureAge",
+        "s3:signatureversion",
+        "s3:x-amz-content-sha256"
+      ],
+      "Annotations": {
+        "Properties": {
+          "IsDataPlane": true,
+          "IsList": false,
+          "IsPermissionManagement": false,
+          "IsTaggingOnly": false,
+          "IsWrite": true
+        }
+      },
+      "Resources": [
+        {
+          "Name": "accesspointobject"
+        },
+        {
+          "Name": "object"
+        }
+      ],
+      "SupportedBy": {
+        "IAM Access Analyzer Policy Generation": false,
+        "IAM Action Last Accessed": false
+      }
+    },
+    {
+      "Name": "AllowVendedLogDeliveryForResource",
+      "ActionConditionKeys": [
+        "s3:deliverySourceArn",
+        "s3:logType",
+        "s3:resourceArnBeingAuthorized"
+      ],
+      "Annotations": {
+        "Properties": {
+          "IsList": false,
+          "IsPermissionManagement": false,
+          "IsTaggingOnly": false,
+          "IsWrite": false
+        }
+      },
+      "Resources": [
+        {
+          "Name": "bucket"
+        }
+      ],
+      "SupportedBy": {
+        "IAM Access Analyzer Policy Generation": false,
+        "IAM Action Last Accessed": false
+      }
+    },
+    {
+      "Name": "AssociateAccessGrantsIdentityCenter",
+      "ActionConditionKeys": [
+        "aws:ResourceTag/${TagKey}",
+        "s3:ResourceAccount",
+        "s3:TlsVersion",
+        "s3:authType",
+        "s3:signatureAge",
+        "s3:signatureversion",
+        "s3:x-amz-content-sha256"
+      ],
+      "Annotations": {
+        "Properties": {
+          "IsDataPlane": false,
+          "IsList": false,
+          "IsPermissionManagement": true,
+          "IsTaggingOnly": false,
+          "IsWrite": true
+        }
+      },
+      "Resources": [
+        {
+          "Name": "accessgrantsinstance"
+        }
+      ],
+      "SupportedBy": {
+        "IAM Access Analyzer Policy Generation": true,
+        "IAM Action Last Accessed": true
+      }
+    }
+  ],
+  "ConditionKeys": [
+    {
+      "Name": "aws:RequestTag/${TagKey}",
+      "Types": [
+        "String"
+      ]
+    },
+    {
+      "Name": "aws:ResourceTag/${TagKey}",
+      "Types": [
+        "String"
+      ]
+    }
+  ],
+  "Operations": [
+    {
+      "Name": "AbortMultipartUpload",
+      "AuthorizedActions": [
+        {
+          "Name": "AbortMultipartUpload",
+          "Service": "s3"
+        },
+        {
+          "Name": "AbortMultipartUpload",
+          "Service": "s3-object-lambda"
+        }
+      ],
+      "SDK": [
+        {
+          "Name": "s3",
+          "Method": "abort_multipart_upload",
+          "Package": "Boto3"
+        }
+      ]
+    }
+  ],
+  "Resources": [
+    {
+      "Name": "accessgrant",
+      "ARNFormats": [
+        "arn:${Partition}:s3:${Region}:${Account}:access-grants/default/grant/${Token}"
+      ],
+      "ConditionKeys": [
+        "aws:RequestTag/${TagKey}",
+        "aws:ResourceTag/${TagKey}",
+        "aws:TagKeys"
+      ]
+    },
+    {
+      "Name": "accessgrantsinstance",
+      "ARNFormats": [
+        "arn:${Partition}:s3:${Region}:${Account}:access-grants/default"
+      ],
+      "ConditionKeys": [
+        "aws:RequestTag/${TagKey}",
+        "aws:ResourceTag/${TagKey}",
+        "aws:TagKeys"
+      ]
+    },
+    {
+      "Name": "accessgrantslocation",
+      "ARNFormats": [
+        "arn:${Partition}:s3:${Region}:${Account}:access-grants/default/location/${Token}"
+      ],
+      "ConditionKeys": [
+        "aws:RequestTag/${TagKey}",
+        "aws:ResourceTag/${TagKey}",
+        "aws:TagKeys"
+      ]
+    },
+    {
+      "Name": "accesspoint",
+      "ARNFormats": [
+        "arn:${Partition}:s3:${Region}:${Account}:accesspoint/${AccessPointName}"
+      ],
+      "ConditionKeys": [
+        "aws:ResourceTag/${TagKey}",
+        "s3:AccessPointNetworkOrigin",
+        "s3:AccessPointTag/${TagKey}",
+        "s3:DataAccessPointAccount",
+        "s3:DataAccessPointArn"
+      ]
+    },
+    {
+      "Name": "accesspointobject",
+      "ARNFormats": [
+        "arn:${Partition}:s3:${Region}:${Account}:accesspoint/${AccessPointName}/object/${ObjectName}"
+      ],
+      "ConditionKeys": [
+        "aws:ResourceTag/${TagKey}",
+        "s3:AccessPointNetworkOrigin",
+        "s3:AccessPointTag/${TagKey}",
+        "s3:BucketTag/${TagKey}",
+        "s3:DataAccessPointAccount",
+        "s3:DataAccessPointArn"
+      ]
+    },
+    {
+      "Name": "bucket",
+      "ARNFormats": [
+        "arn:${Partition}:s3:::${BucketName}"
+      ],
+      "ConditionKeys": [
+        "aws:ResourceTag/${TagKey}",
+        "s3:BucketTag/${TagKey}"
+      ]
+    },
+    {
+      "Name": "job",
+      "ARNFormats": [
+        "arn:${Partition}:s3:${Region}:${Account}:job/${JobId}"
+      ],
+      "ConditionKeys": [
+        "aws:RequestTag/${TagKey}",
+        "aws:ResourceTag/${TagKey}",
+        "aws:TagKeys"
+      ]
+    },
+    {
+      "Name": "multiregionaccesspoint",
+      "ARNFormats": [
+        "arn:${Partition}:s3::${Account}:accesspoint/${AccessPointAlias}"
+      ]
+    },
+    {
+      "Name": "multiregionaccesspointrequestarn",
+      "ARNFormats": [
+        "arn:${Partition}:s3:us-west-2:${Account}:async-request/mrap/${Operation}/${Token}"
+      ]
+    },
+    {
+      "Name": "object",
+      "ARNFormats": [
+        "arn:${Partition}:s3:::${BucketName}/${ObjectName}"
+      ],
+      "ConditionKeys": [
+        "aws:ResourceTag/${TagKey}",
+        "s3:BucketTag/${TagKey}"
+      ]
+    },
+    {
+      "Name": "objectlambdaaccesspoint",
+      "ARNFormats": [
+        "arn:${Partition}:s3-object-lambda:${Region}:${Account}:accesspoint/${AccessPointName}"
+      ]
+    },
+    {
+      "Name": "storagelensconfiguration",
+      "ARNFormats": [
+        "arn:${Partition}:s3:${Region}:${Account}:storage-lens/${ConfigId}"
+      ],
+      "ConditionKeys": [
+        "aws:RequestTag/${TagKey}",
+        "aws:ResourceTag/${TagKey}",
+        "aws:TagKeys"
+      ]
+    },
+    {
+      "Name": "storagelensgroup",
+      "ARNFormats": [
+        "arn:${Partition}:s3:${Region}:${Account}:storage-lens-group/${Name}"
+      ],
+      "ConditionKeys": [
+        "aws:RequestTag/${TagKey}",
+        "aws:ResourceTag/${TagKey}",
+        "aws:TagKeys"
+      ]
+    }
+  ],
+  "Version": "v1.5"
+}

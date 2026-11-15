@@ -1,4 +1,4 @@
-// Command permidex browses cloud IAM roles and permissions offline, from a local cache.
+// Command permidex browses cloud IAM roles, permissions and services offline, from a local cache.
 package main
 
 import (
@@ -8,10 +8,12 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"slices"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/laluowen/permidex/v2/internal/aws"
 	"github.com/laluowen/permidex/v2/internal/browse"
 	"github.com/laluowen/permidex/v2/internal/cache"
 	"github.com/laluowen/permidex/v2/internal/gcp"
@@ -21,6 +23,7 @@ const usage = `usage: permidex <provider> [--refresh|-r] | permidex --cache-dir|
 
 providers:
   gcp             browse GCP predefined IAM roles and permissions
+  aws             browse AWS actions, managed policies and services
 
 options:
   --refresh|-r    refresh that provider's cache from the cloud instead of browsing
@@ -28,8 +31,60 @@ options:
 
 Run "permidex <provider> --refresh|-r" once before browsing.`
 
+// provider is one catalogue the CLI can browse or refresh.
+type provider struct {
+	name    string
+	source  string
+	path    func() (string, error)
+	refresh func(ctx context.Context, path string, progress io.Writer) (string, error)
+	open    func(path string) (browse.Source, error)
+}
+
+var providers = map[string]provider{
+	"gcp": {
+		name:   "gcp",
+		source: "GCP",
+		path:   gcp.CachePath,
+		refresh: func(ctx context.Context, path string, progress io.Writer) (string, error) {
+			n, err := gcp.Refresh(ctx, path, progress)
+			return fmt.Sprintf("wrote %d roles to %s", n, path), err
+		},
+		open: func(path string) (browse.Source, error) {
+			snap, err := gcp.Load(path)
+			if err != nil {
+				return nil, err
+			}
+			return gcp.NewSource(snap), nil
+		},
+	},
+	"aws": {
+		name:   "aws",
+		source: "AWS",
+		path:   aws.CachePath,
+		refresh: func(ctx context.Context, path string, progress io.Writer) (string, error) {
+			services, policies, err := aws.Refresh(ctx, path, progress)
+			return fmt.Sprintf("wrote %d services and %d policies to %s", services, policies, path), err
+		},
+		open: func(path string) (browse.Source, error) {
+			snap, err := aws.Load(path)
+			if err != nil {
+				return nil, err
+			}
+			return aws.NewSource(snap), nil
+		},
+	},
+}
+
 func main() {
-	if err := run(context.Background(), os.Args[1:]); err != nil {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+	err := run(ctx, os.Args[1:])
+	switch {
+	case errors.Is(err, context.Canceled):
+		fmt.Fprintln(os.Stderr, "permidex: interrupted; the existing cache is unchanged")
+		stop()
+		os.Exit(130)
+	case err != nil:
 		fmt.Fprintln(os.Stderr, "permidex:", err)
 		os.Exit(1)
 	}
@@ -82,19 +137,21 @@ func run(ctx context.Context, args []string) error {
 	case "help", "-h", "--help":
 		fmt.Println(usage)
 		return nil
-	case "gcp":
-		return gcpCmd(ctx, args[1:])
 	default:
-		return fmt.Errorf("unknown provider %q (try `permidex help`)", args[0])
+		p, ok := providers[args[0]]
+		if !ok {
+			return fmt.Errorf("unknown provider %q (try `permidex help`)", args[0])
+		}
+		return providerCmd(ctx, p, args[1:])
 	}
 }
 
-func gcpCmd(ctx context.Context, args []string) error {
-	fs := flag.NewFlagSet("permidex gcp", flag.ContinueOnError)
+func providerCmd(ctx context.Context, p provider, args []string) error {
+	fs := flag.NewFlagSet("permidex "+p.name, flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	var refresh bool
-	fs.BoolVar(&refresh, "r", false, "refresh the cache from GCP")
-	fs.BoolVar(&refresh, "refresh", false, "refresh the cache from GCP")
+	fs.BoolVar(&refresh, "r", false, "refresh the cache from "+p.source)
+	fs.BoolVar(&refresh, "refresh", false, "refresh the cache from "+p.source)
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			fmt.Println(usage)
@@ -108,26 +165,26 @@ func gcpCmd(ctx context.Context, args []string) error {
 	if _, err := cacheDirectory(); err != nil {
 		return err
 	}
-	path, err := gcp.CachePath()
+	path, err := p.path()
 	if err != nil {
 		return err
 	}
 	if refresh {
-		n, err := gcp.Refresh(ctx, path, os.Stderr)
+		summary, err := p.refresh(ctx, path, os.Stderr)
 		if err != nil {
 			return err
 		}
-		fmt.Printf("wrote %d roles to %s\n", n, path)
+		fmt.Println(summary)
 		return nil
 	}
-	snap, err := gcp.Load(path)
+	src, err := p.open(path)
 	if errors.Is(err, cache.ErrMissing) {
-		return fmt.Errorf("no cache at %s: run `permidex gcp --refresh|-r`", path)
+		return fmt.Errorf("no cache at %s: run `permidex %s --refresh|-r`", path, p.name)
 	}
 	if err != nil {
 		return err
 	}
-	return browseSource(gcp.NewSource(snap))
+	return browseSource(src)
 }
 
 func browseSource(src browse.Source) error {
